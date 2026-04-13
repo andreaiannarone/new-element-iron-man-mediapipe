@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { createTechSphere } from './TechSphere';
-import { Loader2, Hand } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -716,7 +716,11 @@ const FaceTrackingRoom: React.FC = () => {
 
         {/* Hand Detection Indicator */}
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md border shadow-lg w-fit transition-all duration-300 ${handDetected ? 'bg-blue-500/20 border-blue-500/40' : 'bg-black/40 border-white/10'}`}>
-          <Hand className={`w-4 h-4 ${handDetected ? 'text-blue-400' : 'text-zinc-500'}`} />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 475.73 523.45" className={`w-4 h-4 ${handDetected ? 'text-blue-400' : 'text-zinc-500'}`} fill="currentColor">
+            <rect x="358.22" y="255.09" width="34.46" height="34.31" rx="4.67" ry="4.67" transform="translate(-24.56 506.91) rotate(-66.34)"/>
+            <path d="M475.03,298.75l.7,9.03-15.73,125.3c-.1.82-.47,1.58-1.04,2.18l-57.1,59.63c-.57.6-.94,1.36-1.04,2.18l-2.86,23c-.26,2.1-2.17,3.59-4.27,3.34l-26.18-3.17c-2.11-.26-3.61-2.18-3.35-4.29l4.3-34.47c.1-.82.47-1.59,1.04-2.19l57.01-59.34c.58-.6.94-1.37,1.04-2.19l11.85-96.04c.21-1.69-.72-3.31-2.28-3.99l-18.19-7.92c-1.94-.85-2.83-3.1-1.99-5.05l10.42-24.1c.84-1.95,3.11-2.85,5.06-2l40.45,17.62c1.05.46,1.84,1.36,2.16,2.46h0Z"/>
+            <path d="M146.16,294.31c-6.87-10.53-21.03-11.91-30.35-5.75-10.05,6.65-13,19.96-6.23,30.48l89.06,138.29c.73,1.14,1.04,2.49.88,3.83l-3.9,32.11c-.39,3.17-3.27,5.43-6.45,5.04l-22.25-2.74c-3.17-.39-5.42-3.27-5.04-6.44l2.4-19.72c.16-1.34-.15-2.69-.88-3.83l-53.83-83.71c-1.18-1.83-3.29-2.87-5.46-2.62C48.01,385.7-1.21,341.27.02,284.13c3.6-125.79,194.65-116.72,186.79,7.94-.08,1.24.23,2.48.9,3.52l3.89,6.04c2.93,4.55,9.95,2.94,10.6-2.43l14.34-117.05c.24-1.98-.58-3.92-2.12-5.18C136.2,113.26,188.86-9.28,288.97.56c100.93,12.24,125.05,145.67,32.39,189.48-1.8.85-3.07,2.53-3.33,4.51l-3.62,27.55c-.33,2.53,1.03,4.98,3.36,6.03l12.48,5.61c2.89,1.3,4.2,4.69,2.93,7.59l-8.99,20.58c-1.28,2.93-4.69,4.26-7.62,2.99l-35.51-15.51c-2.34-1.02-3.74-3.46-3.43-6l13.39-109.68c1.88-22.81-30.82-26.08-33.77-3.51,0,0-23.2,188.88-23.2,188.88-3.73,31.51-45.33,40.91-62.08,14.82,0,0-25.83-39.59-25.83-39.59ZM325.1,128.94c.04.69.06,1.35.07,2.01.08,5.78,7.59,7.9,10.69,3.02,17.9-28.16,12.61-66.25-14.97-88.6-54.62-43.13-127.03,12.49-107.33,72.46,1.77,5.39,9.37,5.24,11.04-.17,15.35-49.62,95-50.91,100.5,11.29ZM77.87,332.18c-19.32-37.84,9.42-80.46,48.45-81.59,5.31-.15,7.63-6.86,3.52-10.22-68.23-55.67-141.79,65.91-59.27,99.98,5.11,2.11,10.02-3.36,7.3-8.17h0Z"/>
+          </svg>
           <span className={`text-[11px] font-bold uppercase tracking-wider font-mono ${handDetected ? 'text-blue-100' : 'text-zinc-500'}`}>
             {handDetected ? 'HANDS DETECTED' : 'NO HANDS'}
           </span>
