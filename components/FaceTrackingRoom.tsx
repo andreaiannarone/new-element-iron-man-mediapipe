@@ -259,7 +259,7 @@ const FaceTrackingRoom: React.FC = () => {
     if (!canvasRef.current || !videoRef.current || !containerRef.current) return;
     let isMounted = true;
 
-    // Cleanup refs
+    // Mutable references retained so the cleanup function can dispose them.
     let animationId: number;
     let camera: THREE.PerspectiveCamera;
     let renderer: THREE.WebGLRenderer;
@@ -289,7 +289,7 @@ const FaceTrackingRoom: React.FC = () => {
     const initScene = async () => {
       if (!canvasRef.current || !videoRef.current || !containerRef.current) return;
 
-      // --- THREE JS SETUP ---
+      // Three.js setup
       const canvas = canvasRef.current;
       const width = canvas.clientWidth || window.innerWidth;
       const height = canvas.clientHeight || window.innerHeight;
@@ -320,7 +320,7 @@ const FaceTrackingRoom: React.FC = () => {
       dirLight.position.set(2, 3, 2);
       scene.add(dirLight);
 
-      // --- ROOM LOGIC ---
+      // Room logic
       const roomSize = 90;
       const roomHeight = 30;
       const cellSize = 1.5;
@@ -333,7 +333,7 @@ const FaceTrackingRoom: React.FC = () => {
       techSphere.position.set(0, roomCenterY, 0);
       roomGroup.add(techSphere);
 
-      // --- BLOOM SETUP ---
+      // Bloom setup
       composer = new EffectComposer(renderer);
       const renderPass = new RenderPass(scene, camera);
       const bloomParams = {
@@ -352,7 +352,7 @@ const FaceTrackingRoom: React.FC = () => {
       composer.addPass(renderPass);
       composer.addPass(bloomPass);
 
-      // --- GRID GENERATOR ---
+      // Grid generator
       const createGridPlane = (w: number, h: number, step: number, color: number) => {
         const verts = [];
         for (let x = -w / 2; x <= w / 2 + 1e-6; x += step) {
@@ -394,7 +394,7 @@ const FaceTrackingRoom: React.FC = () => {
       rightWall.position.set(roomSize / 2, roomCenterY, 0);
       roomGroup.add(rightWall);
 
-      // --- ANIMATION VARIABLES ---
+      // Animation variables
       let targetYaw = 0;
       let targetPitch = 0;
       let smoothedYaw = 0;
@@ -420,7 +420,7 @@ const FaceTrackingRoom: React.FC = () => {
       camera.position.set(0, baseCamY, baseCamRadius);
       camera.lookAt(0, roomCenterY, 0);
 
-      // --- RENDER LOOP ---
+      // Render loop
       const animate = () => {
         animationId = requestAnimationFrame(animate);
         controls.update();
@@ -451,7 +451,7 @@ const FaceTrackingRoom: React.FC = () => {
       };
       animate();
 
-      // --- SEQUENTIAL LOADING ---
+      // Sequential loading
       try {
         // Step 1: Load FaceMesh Script
         setStatus("Loading Face Tracking Engine...");
@@ -606,9 +606,7 @@ const FaceTrackingRoom: React.FC = () => {
             onFrame: async () => {
               if (videoRef.current && !videoRef.current.paused && !videoRef.current.ended) {
                 try {
-                  // Alternate processing or just do both? Doing both every frame is heavy.
-                  // Let's do both but maybe sequentially in the frame logic if needed.
-                  // For now, keep it simple but safeguarded.
+                  // Run both models on every frame, sequentially to avoid overlapping sends.
                   await faceMesh.send({ image: videoRef.current });
                   await hands.send({ image: videoRef.current });
                 } catch (e) {

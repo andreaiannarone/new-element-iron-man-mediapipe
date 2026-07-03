@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// --- SHADERS FOR WIREFRAME (Existing) ---
+// Shaders for wireframe
 const vertexShader = `
   attribute vec3 center;
   varying vec3 vCenter;
@@ -32,7 +32,7 @@ const fragmentShader = `
   }
 `;
 
-// --- SHADERS FOR PARTICLES (New: Replaces Image Texture) ---
+// Shaders for particles (procedural, no image texture)
 const particleVertexShader = `
   uniform float size;
   void main() {
@@ -60,7 +60,7 @@ const particleFragmentShader = `
   }
 `;
 
-// --- GEOMETRY HELPER ---
+// Geometry helper
 function addCenterAttribute(geometry: THREE.BufferGeometry) {
   const vectors = [
     new THREE.Vector3(1, 0, 0),
@@ -84,8 +84,6 @@ export function createTechSphere(): THREE.Group {
   const geometry = new THREE.IcosahedronGeometry(10, 6); // High detail geometry
   addCenterAttribute(geometry);
 
-  // Replaced createAlphaMapTexture/createWhiteTexture with ShaderMaterial
-  
   // Particle Material (Procedural Shader)
   const atomMaterial = new THREE.ShaderMaterial({
     uniforms: {
@@ -99,7 +97,7 @@ export function createTechSphere(): THREE.Group {
     blending: THREE.AdditiveBlending
   });
 
-  // Wireframe Material (Original Shader)
+  // Wireframe Material
   const bondMaterial = new THREE.ShaderMaterial({
     vertexShader: vertexShader,
     fragmentShader: fragmentShader,
