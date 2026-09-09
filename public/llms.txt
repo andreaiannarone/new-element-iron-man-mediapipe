@@ -1,0 +1,45 @@
+# New Element - Iron Man
+
+> A free, open-source web experience that turns your webcam into a controller: move your head to explore a 3D sci-fi room and pinch your thumb and index finger to zoom a glowing particle sphere. It runs entirely in the browser with Three.js and Google MediaPipe - no install, no sign-up, no video ever leaves the device.
+
+New Element is a fan tribute to the "new element" laboratory scene from *Iron Man 2*, rebuilt as a real-time WebGL experience. It is a technical demo of markerless face and hand tracking on the web: MediaPipe FaceMesh drives the camera perspective of a grid room, MediaPipe Hands measures thumb-to-index distance to scale a particle sphere post-processed with Unreal Bloom. Created by Andrea Iannarone. Licensed under GPL-3.0. Not affiliated with, endorsed by, or sponsored by Marvel or The Walt Disney Company.
+
+**Live experience:** https://newelement.andreaia.com/
+**Source code:** https://github.com/andreaiannarone/new-element-iron-man-mediapipe
+**Author:** Andrea Iannarone - https://andreaiannarone.com
+
+## How it works
+
+- **Head tracking → camera**: MediaPipe FaceMesh detects 468 facial landmarks per frame; the head's horizontal and vertical position pans and tilts the Three.js camera, so the room parallaxes as you move.
+- **Pinch gesture → zoom**: MediaPipe Hands tracks 21 hand landmarks; the normalized distance between thumb tip and index tip is smoothed and mapped to the central sphere's scale. Spread the fingers to expand it, bring them together to shrink it.
+- **Privacy**: all inference runs client-side via WebAssembly. The webcam stream is processed in the browser and is never uploaded, recorded or transmitted to a server.
+- **Recovery behaviour**: if the hand leaves the frame or the pose becomes ambiguous for several frames, the sphere eases back to a neutral scale rather than freezing on the last value.
+
+## Requirements
+
+- A modern desktop or mobile browser with WebGL and `getUserMedia` support (Chrome or Edge recommended).
+- A webcam, and permission granted when the browser prompts.
+- Good, even lighting on the face and hand improves tracking stability.
+
+## Tech stack
+
+- [Three.js](https://threejs.org): WebGL rendering, grid room, particle sphere, UnrealBloom post-processing
+- [MediaPipe FaceMesh](https://google.github.io/mediapipe/solutions/face_mesh): real-time face landmark detection, loaded from jsDelivr at runtime
+- [MediaPipe Hands](https://google.github.io/mediapipe/solutions/hands): real-time hand landmark detection and pinch measurement
+- [React 19](https://react.dev) + [TypeScript](https://www.typescriptlang.org): UI layer and typing
+- [Vite](https://vitejs.dev): build tool and dev server
+- [Tailwind CSS](https://tailwindcss.com): interface styling
+
+## Frequently asked questions
+
+- **Is it free?** Yes. It is free to use and open source under the GNU General Public License v3.0.
+- **Do I need to install anything?** No. It runs in the browser; MediaPipe models are fetched from a CDN on load.
+- **Is my webcam video sent anywhere?** No. Face and hand inference happen locally in the browser; no frames are uploaded or stored.
+- **Does it work on a phone?** Yes, on modern mobile browsers with WebGL and camera access. The webcam preview expands to near full width on small screens.
+- **Why doesn't tracking work?** The most common causes are a denied camera permission, another app holding the camera, poor lighting, or a browser without WebGL support.
+- **Can I reuse the code?** Yes, under the terms of GPL-3.0. The source is on GitHub.
+
+## Optional
+
+- [README with configuration reference](https://github.com/andreaiannarone/new-element-iron-man-mediapipe#readme): hand-tracking tuning parameters, sphere configuration, project structure
+- [GPL-3.0 license](https://github.com/andreaiannarone/new-element-iron-man-mediapipe/blob/main/LICENSE)

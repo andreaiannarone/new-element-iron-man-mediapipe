@@ -1,0 +1,7 @@
+{
+  "name": "New Element - Iron Man",
+  "description": "Real-time face and hand tracking in the browser: move your head to explore a 3D sci-fi room and pinch to zoom a particle sphere, built with Three.js and MediaPipe.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

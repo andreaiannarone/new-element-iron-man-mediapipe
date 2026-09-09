@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/*
+  Play is the single typeface of the interface.
+  Mirrors the `tailwind.config` that used to sit inline in index.html
+  when Tailwind was loaded from the CDN.
+*/
+@theme {
+  --font-sans: 'Play', sans-serif;
+  --font-mono: 'Play', sans-serif;
+}

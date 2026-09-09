@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://newelement.andreaia.com/</loc>
+    <lastmod>2026-09-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://newelement.andreaia.com/og-image.jpg</image:loc>
+      <image:title>New Element - real-time face and hand tracking in the browser</image:title>
+      <image:caption>A glowing particle sphere inside a 3D grid room, controlled by face and hand tracking with Three.js and MediaPipe.</image:caption>
+    </image:image>
+  </url>
+</urlset>

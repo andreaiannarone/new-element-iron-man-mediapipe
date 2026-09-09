@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- Primary Meta Tags -->
+  <title>New Element - Control 3D With Your Face, Like Iron Man</title>
+  <meta name="title" content="New Element - Control 3D With Your Face, Like Iron Man">
+  <meta name="description"
+    content="Your webcam becomes the controller. Move your head to explore the lab, pinch your fingers to shape the element. A real-time WebGL tribute to Iron Man 2.">
+  <meta name="author" content="Andrea Iannarone">
+  <meta name="keywords"
+    content="face tracking, hand tracking, MediaPipe, Three.js, WebGL, gesture control, pinch to zoom, webcam experiment, Iron Man new element, creative coding, browser 3D">
+  <link rel="canonical" href="https://newelement.andreaia.com/">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+
+  <!-- Appearance -->
+  <meta name="theme-color" content="#09090b">
+  <meta name="color-scheme" content="dark">
+  <meta name="application-name" content="New Element">
+  <meta name="apple-mobile-web-app-title" content="New Element">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+
+  <!-- Icons & manifest -->
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="manifest" href="/site.webmanifest">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="New Element - Iron Man">
+  <meta property="og:url" content="https://newelement.andreaia.com/">
+  <meta property="og:title" content="New Element - Control 3D With Your Face, Like Iron Man">
+  <meta property="og:description"
+    content="Your webcam becomes the controller. Move your head to explore the lab, pinch your fingers to shape the element. A real-time WebGL tribute to Iron Man 2.">
+  <meta property="og:image" content="https://newelement.andreaia.com/og-image.jpg">
+  <meta property="og:image:secure_url" content="https://newelement.andreaia.com/og-image.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt"
+    content="A glowing blue particle sphere inside a dark 3D grid room, next to the words Face and hand tracking, live.">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="New Element - Control 3D With Your Face, Like Iron Man">
+  <meta name="twitter:description"
+    content="Your webcam becomes the controller. Move your head to explore the lab, pinch your fingers to shape the element. A real-time WebGL tribute to Iron Man 2.">
+  <meta name="twitter:image" content="https://newelement.andreaia.com/og-image.jpg">
+  <meta name="twitter:image:alt"
+    content="A glowing blue particle sphere inside a dark 3D grid room, next to the words Face and hand tracking, live.">
+
+  <!-- Machine-readable summary for AI answer engines -->
+  <link rel="alternate" type="text/plain" href="/llms.txt" title="llms.txt - plain-text summary for language models">
+
+  <!-- Resource hints -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Play:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://newelement.andreaia.com/#website",
+        "url": "https://newelement.andreaia.com/",
+        "name": "New Element - Iron Man",
+        "description": "Real-time face and hand tracking WebGL experience built with Three.js and MediaPipe.",
+        "inLanguage": "en",
+        "publisher": { "@id": "https://newelement.andreaia.com/#author" }
+      },
+      {
+        "@type": "Person",
+        "@id": "https://newelement.andreaia.com/#author",
+        "name": "Andrea Iannarone",
+        "url": "https://andreaiannarone.com",
+        "jobTitle": "Digital designer and creative developer",
+        "sameAs": [
+          "https://andreaiannarone.com",
+          "https://github.com/andreaiannarone"
+        ]
+      },
+      {
+        "@type": ["WebApplication", "SoftwareApplication"],
+        "@id": "https://newelement.andreaia.com/#app",
+        "name": "New Element - Iron Man",
+        "alternateName": "New Element face and hand tracking experience",
+        "url": "https://newelement.andreaia.com/",
+        "applicationCategory": "MultimediaApplication",
+        "applicationSubCategory": "Interactive WebGL experience",
+        "operatingSystem": "Any operating system with a modern web browser",
+        "browserRequirements": "Requires WebGL, WebAssembly and webcam access (getUserMedia). Chrome or Edge recommended.",
+        "permissions": "camera",
+        "isAccessibleForFree": true,
+        "inLanguage": "en",
+        "description": "A browser-based experience that turns the webcam into a controller: head movement pans and tilts the camera inside a 3D grid room, while the distance between thumb and index finger scales a glowing particle sphere. Face and hand inference run entirely on the device with Google MediaPipe; the video stream is never uploaded.",
+        "featureList": [
+          "Real-time face tracking that drives the 3D camera perspective",
+          "Pinch gesture (thumb to index distance) that scales the central particle sphere",
+          "Live hand-landmark overlay on the webcam preview",
+          "Particle sphere with Unreal Bloom post-processing inside a grid room",
+          "On-device inference - the webcam stream never leaves the browser",
+          "Responsive layout with a floating webcam preview on mobile"
+        ],
+        "screenshot": "https://newelement.andreaia.com/og-image.jpg",
+        "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+        "author": { "@id": "https://newelement.andreaia.com/#author" },
+        "creator": { "@id": "https://newelement.andreaia.com/#author" },
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "USD",
+          "availability": "https://schema.org/InStock"
+        },
+        "softwareHelp": "https://github.com/andreaiannarone/new-element-iron-man-mediapipe#readme",
+        "codeRepository": "https://github.com/andreaiannarone/new-element-iron-man-mediapipe",
+        "keywords": "face tracking, hand tracking, MediaPipe, Three.js, WebGL, gesture control, creative coding"
+      },
+      {
+        "@type": "HowTo",
+        "@id": "https://newelement.andreaia.com/#howto",
+        "name": "How to control the New Element experience with your face and hands",
+        "description": "Use head movement and a pinch gesture to control a 3D scene in the browser.",
+        "totalTime": "PT1M",
+        "tool": [
+          { "@type": "HowToTool", "name": "A webcam" },
+          { "@type": "HowToTool", "name": "A browser with WebGL support" }
+        ],
+        "step": [
+          {
+            "@type": "HowToStep",
+            "position": 1,
+            "name": "Allow camera access",
+            "text": "Open the experience and accept the browser prompt asking for webcam permission. Nothing is recorded or uploaded."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 2,
+            "name": "Move your head to look around",
+            "text": "Move your head left, right, up or down. Face tracking pans and tilts the camera, so the 3D grid room shifts with you."
+          },
+          {
+            "@type": "HowToStep",
+            "position": 3,
+            "name": "Pinch to zoom the sphere",
+            "text": "Raise one hand in front of the webcam. Spread your thumb and index finger apart to expand the particle sphere, bring them together to shrink it."
+          }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://newelement.andreaia.com/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is my webcam video sent to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. Face and hand detection run entirely on your device through MediaPipe compiled to WebAssembly. No frames are uploaded, recorded or stored anywhere."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need to install anything to use it?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. It runs in any modern browser with WebGL and camera support. The MediaPipe models are fetched from a CDN the first time the page loads."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Is it free and open source?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The experience is free to use and the source code is published on GitHub under the GNU General Public License v3.0."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work on a phone?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes, on modern mobile browsers with WebGL and camera access. On small screens the webcam preview expands to near full width and the 3D canvas fills the visible viewport height."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Why is the tracking not working?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "The usual causes are a denied camera permission, another application already using the webcam, poor or uneven lighting, or a browser without WebGL support. Reload the page and grant camera access, then make sure your face and hand are well lit and inside the frame."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What is it built with?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Three.js for WebGL rendering and Unreal Bloom post-processing, Google MediaPipe FaceMesh and Hands for landmark detection, React 19 and TypeScript for the interface, and Vite as the build tool."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    html,
+    body,
+    #root {
+      font-family: 'Play', sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      font-family: inherit;
+    }
+
+    .font-sans,
+    .font-mono,
+    .lil-gui,
+    .lil-gui * {
+      font-family: 'Play', sans-serif !important;
+    }
+
+    body {
+      background-color: #09090b;
+      color: #e4e4e7;
+    }
+
+    /* Custom scrollbar for webkit */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #18181b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3f3f46;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #52525b;
+    }
+
+    /* GUI overrides */
+    .lil-gui {
+      --background-color: #18181b;
+      --text-color: #e4e4e7;
+      --title-background-color: #27272a;
+      --widget-color: #3f3f46;
+      --hover-color: #52525b;
+      --focus-color: #52525b;
+      --number-color: #60a5fa;
+      --string-color: #60a5fa;
+    }
+
+    /*
+      Static description of the experience.
+      It is the no-JavaScript version of the page and the content crawlers and
+      language models read, since the WebGL app itself renders to a canvas.
+      React replaces it as soon as the app mounts.
+    */
+    .nx-static {
+      max-width: 46rem;
+      margin: 0 auto;
+      padding: 4rem 1.5rem 5rem;
+      line-height: 1.65;
+      animation: nx-appear .5s ease .4s both;
+    }
+
+    @keyframes nx-appear {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .nx-static { animation: none; }
+    }
+
+    .nx-static h1 {
+      font-size: clamp(2rem, 6vw, 3rem);
+      line-height: 1.1;
+      font-weight: 700;
+      color: #fafafa;
+      margin-bottom: .75rem;
+    }
+
+    .nx-static h2 {
+      font-size: 1.125rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      color: #60a5fa;
+      margin: 2.5rem 0 .75rem;
+    }
+
+    .nx-static h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e4e4e7;
+      margin: 1.25rem 0 .25rem;
+    }
+
+    .nx-static p,
+    .nx-static li {
+      color: #a1a1aa;
+    }
+
+    .nx-static .nx-lead {
+      font-size: 1.125rem;
+      color: #d4d4d8;
+    }
+
+    .nx-static ul,
+    .nx-static ol {
+      padding-left: 1.25rem;
+      margin: .5rem 0;
+    }
+
+    .nx-static ul {
+      list-style: disc;
+    }
+
+    .nx-static ol {
+      list-style: decimal;
+    }
+
+    .nx-static li {
+      margin: .35rem 0;
+    }
+
+    .nx-static a {
+      color: #60a5fa;
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .nx-static strong {
+      color: #e4e4e7;
+    }
+
+    .nx-static footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, .1);
+      font-size: .8125rem;
+      color: #71717a;
+    }
+
+    .nx-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      border: 1px solid rgba(255, 255, 255, .1);
+      background: rgba(255, 255, 255, .03);
+      border-radius: 999px;
+      padding: .35rem .85rem;
+      font-size: .6875rem;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, .85);
+      margin-bottom: 1.5rem;
+    }
+
+    .nx-badge::before {
+      content: "";
+      width: .5rem;
+      height: .5rem;
+      border-radius: 50%;
+      background: #3b82f6;
+      box-shadow: 0 0 8px rgba(59, 130, 246, .8);
+    }
+
+    /* Visible only to screen readers and text-only crawlers */
+    .nx-sr {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root">
+    <article class="nx-static">
+      <p class="nx-badge">New Element &middot; Iron Man</p>
+
+      <h1>Real-time face and hand tracking, in your browser</h1>
+
+      <p class="nx-lead">
+        <strong>New Element</strong> turns your webcam into a controller. Move your head to explore a 3D sci-fi grid
+        room, then pinch your thumb and index finger to zoom a glowing particle sphere. Everything runs live in the
+        browser with <strong>Three.js</strong> and <strong>Google MediaPipe</strong> - no install, no sign-up, and the
+        video never leaves your device.
+      </p>
+
+      <p>
+        The experience is a fan tribute to the &ldquo;new element&rdquo; laboratory scene from <em>Iron Man 2</em>,
+        rebuilt as a WebGL demo of markerless face and hand tracking on the open web.
+        <strong>Loading the interactive experience&hellip;</strong> If nothing appears, JavaScript may be disabled or
+        your browser may not support WebGL.
+      </p>
+
+      <h2>How to use it</h2>
+      <ol>
+        <li><strong>Allow camera access</strong> when the browser asks. Nothing is recorded or uploaded.</li>
+        <li><strong>Move your head</strong> left, right, up or down - the camera pans and tilts, and the room
+          parallaxes with you.</li>
+        <li><strong>Raise one hand</strong> in front of the webcam and <strong>spread thumb and index finger</strong> to
+          expand the sphere, or bring them together to shrink it.</li>
+      </ol>
+
+      <h2>What it does</h2>
+      <ul>
+        <li><strong>Face tracking</strong> - MediaPipe FaceMesh reads facial landmarks each frame and drives the camera
+          perspective of the 3D room in real time.</li>
+        <li><strong>Hand tracking</strong> - MediaPipe Hands measures the smoothed distance between thumb tip and index
+          tip and maps it to the sphere's scale.</li>
+        <li><strong>Hand overlay</strong> - a live landmark overlay is drawn on the webcam preview, with highlighted
+          fingertips and connection lines.</li>
+        <li><strong>Particle sphere</strong> - a glowing tech sphere at the centre of a grid room, post-processed with
+          Unreal Bloom for a cinematic look.</li>
+        <li><strong>On-device inference</strong> - detection runs client-side through WebAssembly; the webcam stream is
+          never uploaded or stored.</li>
+      </ul>
+
+      <h2>What you need</h2>
+      <ul>
+        <li>A modern desktop or mobile browser with WebGL and camera support - Chrome or Edge recommended.</li>
+        <li>A webcam, with permission granted at the browser prompt.</li>
+        <li>Even lighting on your face and hand for stable tracking.</li>
+      </ul>
+
+      <h2>Built with</h2>
+      <p>
+        <a href="https://threejs.org" rel="noopener">Three.js</a> for WebGL rendering and bloom post-processing,
+        <a href="https://google.github.io/mediapipe/solutions/face_mesh" rel="noopener">MediaPipe FaceMesh</a> and
+        <a href="https://google.github.io/mediapipe/solutions/hands" rel="noopener">MediaPipe Hands</a> for landmark
+        detection, <a href="https://react.dev" rel="noopener">React 19</a> with
+        <a href="https://www.typescriptlang.org" rel="noopener">TypeScript</a> for the interface, and
+        <a href="https://vitejs.dev" rel="noopener">Vite</a> as the build tool.
+      </p>
+
+      <h2>Questions</h2>
+
+      <h3>Is my webcam video sent to a server?</h3>
+      <p>No. Face and hand detection run entirely on your device through MediaPipe compiled to WebAssembly. No frames
+        are uploaded, recorded or stored anywhere.</p>
+
+      <h3>Do I need to install anything?</h3>
+      <p>No. It runs in any modern browser with WebGL and camera support. The MediaPipe models are fetched from a CDN
+        the first time the page loads.</p>
+
+      <h3>Is it free and open source?</h3>
+      <p>Yes. It is free to use, and the source code is published on
+        <a href="https://github.com/andreaiannarone/new-element-iron-man-mediapipe" rel="noopener">GitHub</a> under the
+        GNU General Public License v3.0.</p>
+
+      <h3>Does it work on a phone?</h3>
+      <p>Yes, on modern mobile browsers with WebGL and camera access. On small screens the webcam preview expands to
+        near full width and the 3D canvas fills the visible viewport height.</p>
+
+      <h3>Why is the tracking not working?</h3>
+      <p>The usual causes are a denied camera permission, another application already using the webcam, poor lighting,
+        or a browser without WebGL support. Reload the page, grant camera access, and make sure your face and hand are
+        well lit and inside the frame.</p>
+
+      <footer>
+        <p>
+          Digital experience by <a href="https://andreaiannarone.com" rel="author noopener">Andrea Iannarone</a>.
+          Released under the GPL-3.0 license.
+        </p>
+        <p>
+          Independent fan project. Not affiliated with, endorsed by or sponsored by Marvel or The Walt Disney Company.
+          <em>Iron Man</em> and related names are trademarks of their respective owners.
+        </p>
+      </footer>
+    </article>
+  </div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
+</html>
