@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Info } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Info, Volume2, VolumeX } from 'lucide-react';
 import FaceTrackingRoom from './components/FaceTrackingRoom';
 import AboutDialog from './components/AboutDialog';
 import EntryScreen, { type StartMode } from './components/EntryScreen';
+import { sound } from './components/sound';
 
 const App: React.FC = () => {
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -10,6 +11,10 @@ const App: React.FC = () => {
   // null until the visitor chooses on the entry screen.
   const [startMode, setStartMode] = useState<StartMode | null>(null);
   const started = startMode !== null;
+  // True from the click on the entry screen: drives the power-up transition.
+  const [entering, setEntering] = useState(false);
+  const [muted, setMuted] = useState(sound.isMuted);
+  useEffect(() => sound.subscribe(setMuted), []);
 
   return (
     <main className="relative w-screen h-screen h-dvh min-h-screen min-h-dvh overflow-hidden bg-black selection:bg-blue-500/30">
@@ -23,7 +28,7 @@ const App: React.FC = () => {
 
       {/* Main 3D Environment */}
       <div className="absolute inset-0 z-0">
-        <FaceTrackingRoom onPointerFallbackChange={setPointerFallback} startMode={startMode} />
+        <FaceTrackingRoom onPointerFallbackChange={setPointerFallback} startMode={startMode} entering={entering} />
       </div>
 
       {/* Overlay UI - Styled to match Top Right Icons */}
@@ -54,6 +59,21 @@ const App: React.FC = () => {
             <Info className="h-3.5 w-3.5" />
           </button>
 
+          {/* Sound toggle, same pill as the info button */}
+          <button
+            type="button"
+            onClick={() => {
+              sound.setMuted(!muted);
+              if (muted) sound.blip('click');
+            }}
+            aria-pressed={!muted}
+            aria-label={muted ? 'Turn sound on' : 'Turn sound off'}
+            title={muted ? 'Turn sound on' : 'Turn sound off'}
+            className="pointer-events-auto flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg text-zinc-300 transition-colors hover:bg-white/15 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          </button>
+
           <div className="flex w-full min-w-0 items-center justify-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg sm:w-fit">
             <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-pulse shrink-0" />
             <p className="text-center text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
@@ -68,7 +88,7 @@ const App: React.FC = () => {
 
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
 
-      {!started ? <EntryScreen onStart={setStartMode} /> : null}
+      {!started ? <EntryScreen onIgnite={() => setEntering(true)} onStart={setStartMode} /> : null}
 
     </main>
   );

@@ -7,6 +7,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { createTechSphere } from './TechSphere';
 import BootLoader from './BootLoader';
+import { IGNITE_IMPACT_S, sound } from './sound';
 
 declare global {
   interface Window {
@@ -247,9 +248,14 @@ interface FaceTrackingRoomProps {
    * the webcam is never requested.
    */
   startMode?: 'camera' | 'pointer' | null;
+  /**
+   * True from the click on the entry screen, slightly before startMode is
+   * set: starts the power-up transition in sync with its sound.
+   */
+  entering?: boolean;
 }
 
-const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackChange, startMode = null }) => {
+const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackChange, startMode = null, entering = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const handOverlayRef = useRef<HTMLCanvasElement>(null);
@@ -268,6 +274,8 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
   const gridGroupRef = useRef<THREE.Group | null>(null);
   const startModeRef = useRef<'camera' | 'pointer' | null>(startMode);
   startModeRef.current = startMode;
+  const enteringRef = useRef(entering || startMode !== null);
+  enteringRef.current = entering || startMode !== null;
 
 
   // Resolved by the entry screen; the init sequence awaits it before it
@@ -286,6 +294,29 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
 
   useEffect(() => {
     faceDetectedRef.current = faceDetected;
+  }, [faceDetected]);
+
+  // Audio cues for tracking: a rising pair when a hand is picked up, falling
+  // when it is lost (rate-limited, tracking can flicker), and one cue the
+  // first time a face is found.
+  const lastHandCueRef = useRef(0);
+  const handCueReadyRef = useRef(false);
+  useEffect(() => {
+    if (!handCueReadyRef.current) {
+      handCueReadyRef.current = true;
+      return;
+    }
+    const now = performance.now();
+    if (now - lastHandCueRef.current < 700) return;
+    lastHandCueRef.current = now;
+    sound.blip(handDetected ? 'found' : 'lost');
+  }, [handDetected]);
+  const faceCuedRef = useRef(false);
+  useEffect(() => {
+    if (faceDetected && !faceCuedRef.current) {
+      faceCuedRef.current = true;
+      sound.blip('found');
+    }
   }, [faceDetected]);
 
   useEffect(() => {
@@ -400,6 +431,29 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       composer.addPass(renderPass);
       composer.addPass(bloomPass);
 
+      // Entry power-up: the sphere charges (spins up, glows, the lens tightens)
+      // until IGNITE_IMPACT_S, then bursts with a shockwave ring and settles.
+      // The timing matches sound.ignite().
+      const BASE_FOV = camera.fov;
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let igniteStart = -1;
+      let igniteDone = false;
+      const shockwave = new THREE.Mesh(
+        new THREE.RingGeometry(0.97, 1, 160),
+        new THREE.MeshBasicMaterial({
+          color: 0x9fd4ff,
+          transparent: true,
+          opacity: 0,
+          blending: THREE.AdditiveBlending,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        })
+      );
+      shockwave.visible = false;
+      scene.add(shockwave);
+      const sphereWorld = new THREE.Vector3();
+      let prevScale = 0;
+
       // Grid generator
       const createGridPlane = (w: number, h: number, step: number, color: number) => {
         const verts = [];
@@ -443,7 +497,20 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
         const lift = THREE.MathUtils.lerp(ENTRY_LIFT, baseCamRadius * tanHalf * centre, t);
         return { scale, lift };
       };
-      let smoothedLift = startModeRef.current === null ? entryFraming().lift : 0;
+      // Phones in camera mode: the webcam preview spans the bottom of the
+      // screen (full width, 16:9, 24px from the bottom edge; see the Webcam
+      // Window markup), so the sphere is centred in the space above it.
+      const ACTIVE_TOP_RESERVED = 64; // px under the top bar
+      const activeLift = () => {
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        if (startModeRef.current !== 'camera' || w >= 640 || w >= h) return 0;
+        const webcamTop = h - 24 - ((w - 32) * 9) / 16;
+        const centreNdc = 1 - (ACTIVE_TOP_RESERVED + webcamTop) / h;
+        const tanHalf = Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2));
+        return Math.max(0, baseCamRadius * tanHalf * centreNdc);
+      };
+      let smoothedLift = startModeRef.current === null ? entryFraming().lift : activeLift();
       let leftEntry = startModeRef.current !== null;
 
       const gridColor = 0x3b82f6;
@@ -619,7 +686,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
 
         // Entry framing: hold the sphere big and high until the visitor enters,
         // then release it to its normal size and position.
-        const inEntry = startModeRef.current === null;
+        const inEntry = !enteringRef.current;
         const entry = entryFraming();
         if (inEntry) {
           targetScale = entry.scale;
@@ -627,11 +694,11 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
           targetScale = DEFAULT_HAND_SCALE;
           leftEntry = true;
         }
-        smoothedLift += ((inEntry ? entry.lift : 0) - smoothedLift) * 0.045;
+        smoothedLift += ((inEntry ? entry.lift : activeLift()) - smoothedLift) * 0.045;
         techSphere.position.y = roomCenterY + smoothedLift;
 
         // Grid fades from greyscale to blue when the visitor enters.
-        const toneTarget = startModeRef.current === null ? 0 : 1;
+        const toneTarget = inEntry ? 0 : 1;
         if (Math.abs(toneTarget - gridTone) > 0.001) {
           gridTone += (toneTarget - gridTone) * 0.045;
           for (const plane of gridGroup.children) {
@@ -647,12 +714,60 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
         roomGroup.rotation.y = smoothedYaw * 0.85;
         roomGroup.rotation.x = smoothedPitch * 0.6;
 
-        // Apply Scale to Sphere
-        techSphere.scale.set(smoothedScale, smoothedScale, smoothedScale);
+        // Power-up timeline
+        let charge = 0;
+        let burst = 0;
+        let ring = -1;
+        let sinceIgnite = 0;
+        if (!inEntry && igniteStart < 0) igniteStart = performance.now();
+        if (igniteStart >= 0 && !igniteDone) {
+          sinceIgnite = (performance.now() - igniteStart) / 1000;
+          if (sinceIgnite < IGNITE_IMPACT_S) {
+            charge = (sinceIgnite / IGNITE_IMPACT_S) ** 2;
+          } else {
+            burst = Math.exp(-(sinceIgnite - IGNITE_IMPACT_S) * 2.6);
+            ring = (sinceIgnite - IGNITE_IMPACT_S) / 1.3;
+          }
+          if (sinceIgnite > IGNITE_IMPACT_S + 3) {
+            igniteDone = true;
+            burst = 0;
+          }
+        }
+        const motion = reduceMotion ? 0 : 1;
+        bloomPass.strength = bloomParams.bloomStrength + charge * 0.15 + burst * 0.6;
+        const fov = BASE_FOV - (charge * 2.5 + burst * 2.5) * motion;
+        if (Math.abs(fov - camera.fov) > 0.001) {
+          camera.fov = fov;
+          camera.updateProjectionMatrix();
+        }
 
-        // Auto rotate the tech sphere
-        techSphere.rotation.y += 0.005;
-        techSphere.rotation.x += 0.002;
+        if (ring >= 0 && ring < 1 && motion) {
+          const eased = 1 - (1 - ring) ** 3;
+          const radius = SPHERE_RADIUS * smoothedScale * (1.05 + eased * 3.2);
+          techSphere.getWorldPosition(sphereWorld);
+          shockwave.position.copy(sphereWorld);
+          shockwave.quaternion.copy(camera.quaternion);
+          shockwave.scale.setScalar(radius);
+          (shockwave.material as THREE.MeshBasicMaterial).opacity = (1 - ring) ** 2 * 0.6;
+          shockwave.visible = true;
+        } else {
+          shockwave.visible = false;
+        }
+
+        // Apply Scale to Sphere: contracts while charging, pops on impact
+        const pulse = 1 + (burst * 0.04 - charge * 0.03) * motion;
+        techSphere.scale.setScalar(smoothedScale * pulse);
+
+        // Auto rotate the tech sphere (spun up by the power-up)
+        const spin = 1 + (charge * 4 + burst * 3) * motion;
+        techSphere.rotation.y += 0.005 * spin;
+        techSphere.rotation.x += 0.002 * spin;
+
+        // Energy tone follows the sphere while it is being shaped, once the
+        // power-up (which also rescales the sphere) is over.
+        const activity = Math.abs(smoothedScale - prevScale) * 60;
+        prevScale = smoothedScale;
+        if (igniteDone || (igniteStart >= 0 && sinceIgnite > 2.5)) sound.setEnergy(smoothedScale, activity);
 
         composer.render();
       };

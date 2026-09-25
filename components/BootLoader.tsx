@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { sound } from './sound';
 
 /**
  * HUD-style boot readout shown while the tracking engines load.
@@ -79,6 +80,10 @@ const BootLoader: React.FC<BootLoaderProps> = ({ visible, status }) => {
       window.clearTimeout(toGone);
     };
   }, [visible]);
+
+  useEffect(() => {
+    if (phase === 'online' && !isError) sound.blip('online');
+  }, [phase, isError]);
 
   const found = STEPS.findIndex((s) => status.startsWith(s.match));
   const step = Math.max(found, 0);

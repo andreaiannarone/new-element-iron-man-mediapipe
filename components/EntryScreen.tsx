@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { ArrowRight, Hand, MousePointer2, ScanFace, ShieldCheck } from 'lucide-react';
+import { sound } from './sound';
 
 export type StartMode = 'camera' | 'pointer';
 
 interface EntryScreenProps {
+  /** Fired on the click itself, so the scene's power-up starts in sync. */
+  onIgnite?: () => void;
+  /** Fired once the overlay has faded. */
   onStart: (mode: StartMode) => void;
 }
 
@@ -15,12 +19,16 @@ interface EntryScreenProps {
  * scene is already rendering behind this screen, so choosing reveals it
  * instantly rather than starting a new wait.
  */
-const EntryScreen: React.FC<EntryScreenProps> = ({ onStart }) => {
+const EntryScreen: React.FC<EntryScreenProps> = ({ onIgnite, onStart }) => {
   const [leaving, setLeaving] = useState(false);
 
   const choose = (mode: StartMode) => {
     if (leaving) return;
     setLeaving(true);
+    // Audio can only start inside the click.
+    sound.start();
+    sound.ignite();
+    onIgnite?.();
     // Matches the overlay fade so the scene is revealed, not cut to.
     window.setTimeout(() => onStart(mode), 720);
   };
