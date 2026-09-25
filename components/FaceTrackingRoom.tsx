@@ -507,10 +507,16 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
        * half-angle alpha.
        */
       const spanRows = (topPx: number, bottomPx: number) => {
-        const h = window.innerHeight;
+        // Measured against the canvas itself: on iOS the page can extend
+        // under the floating toolbar, so window.innerHeight is not the
+        // height the scene is rendered at.
+        const canvasRect = renderer.domElement.getBoundingClientRect();
+        const h = canvasRect.height || window.innerHeight;
+        const top = topPx - canvasRect.top;
+        const bottom = bottomPx - canvasRect.top;
         const tanHalf = Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2));
-        const a1 = Math.atan((1 - (2 * topPx) / h) * tanHalf);
-        const a2 = Math.atan((1 - (2 * bottomPx) / h) * tanHalf);
+        const a1 = Math.atan((1 - (2 * top) / h) * tanHalf);
+        const a2 = Math.atan((1 - (2 * bottom) / h) * tanHalf);
         const lift = baseCamRadius * Math.tan((a1 + a2) / 2);
         const distance = Math.hypot(baseCamRadius, lift);
         return { lift, scale: (distance * Math.sin((a1 - a2) / 2)) / SPHERE_RADIUS };
@@ -542,8 +548,11 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       // the webcam preview spans the bottom, so the sphere is centred in the
       // band between them (both measured) and shrunk if it would not fit.
       // The pinch still scales it from there.
-      const ACTIVE_FILL = 0.86; // of the band's height / screen width
+      const ACTIVE_FILL = 0.78; // of the band's height / screen width
       const ACTIVE_MARGIN = 12; // px kept clear under the indicators
+      // The room (sphere included) follows the head, and looking down moves
+      // it down towards the preview: rest a little above the band's centre.
+      const ACTIVE_RAISE = 0.06; // of the band's height
       const hudStack = () => document.querySelector('[data-hud-stack]');
       const hudWebcam = () => document.querySelector('[data-hud-webcam]');
       let activeCache = { lift: 0, fit: 1 };
@@ -563,7 +572,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
         const bottom = webcam.getBoundingClientRect().top;
         if (bottom - top < 40) return activeCache;
         const diameter = Math.min((bottom - top) * ACTIVE_FILL, w * ACTIVE_FILL);
-        const mid = (top + bottom) / 2;
+        const mid = (top + bottom) / 2 - (bottom - top) * ACTIVE_RAISE;
         const framed = spanRows(mid - diameter / 2, mid + diameter / 2);
         activeCache = { lift: framed.lift, fit: Math.min(1, framed.scale) };
         return activeCache;

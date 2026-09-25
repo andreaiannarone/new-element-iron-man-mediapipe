@@ -148,7 +148,8 @@ const EntryScreen: React.FC<EntryScreenProps> = ({ onIgnite, onStart }) => {
 
           <p className="ne-rise ne-note mt-5 flex items-start gap-2 text-[11px] leading-relaxed text-white/55" style={{ animationDelay: '0.56s' }}>
             <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0 text-blue-300/80" />
-            <span>Nothing is recorded: every frame stays in your browser. Permission is asked only after you choose.</span>
+            <span className="sm:hidden">Nothing is recorded, frames stay in your browser.</span>
+            <span className="hidden sm:inline">Nothing is recorded: every frame stays in your browser. Permission is asked only after you choose.</span>
           </p>
         </div>
       </div>
