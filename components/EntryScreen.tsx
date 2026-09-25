@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { ArrowRight, Hand, MousePointer2, ScanFace, ShieldCheck } from 'lucide-react';
 import { sound } from './sound';
+import { entrySphereSlot } from './entryLayout';
 
 export type StartMode = 'camera' | 'pointer';
 
@@ -21,6 +22,32 @@ interface EntryScreenProps {
  */
 const EntryScreen: React.FC<EntryScreenProps> = ({ onIgnite, onStart }) => {
   const [leaving, setLeaving] = useState(false);
+
+  // Share the space between the top labels and the copy with the scene,
+  // which fits the sphere into it on portrait screens.
+  const labelsRef = useRef<HTMLDivElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const labels = labelsRef.current;
+      const intro = introRef.current;
+      if (!labels || !intro) return;
+      const labelRow = labels.firstElementChild as HTMLElement | null;
+      entrySphereSlot.top = labels.getBoundingClientRect().top + (labelRow?.offsetHeight ?? 0);
+      entrySphereSlot.bottom = intro.getBoundingClientRect().top;
+      entrySphereSlot.valid = true;
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    if (introRef.current) observer.observe(introRef.current);
+    window.addEventListener('resize', measure);
+    void document.fonts?.ready.then(measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+      entrySphereSlot.valid = false;
+    };
+  }, []);
 
   const choose = (mode: StartMode) => {
     if (leaving) return;
@@ -52,7 +79,7 @@ const EntryScreen: React.FC<EntryScreenProps> = ({ onIgnite, onStart }) => {
 
       {/* HUD labels in the corners of the viewport; the bottom pair is
           desktop only, where the copy does not reach the bottom edge. */}
-      <div className="absolute inset-x-4 top-5 bottom-5 sm:inset-8" aria-hidden="true">
+      <div ref={labelsRef} className="absolute inset-x-4 top-5 bottom-5 sm:inset-8" aria-hidden="true">
         <span className="ne-rise absolute top-0 left-0 font-mono text-[9px] tracking-[0.3em] text-white/45 uppercase">
           New Element
         </span>
@@ -72,7 +99,7 @@ const EntryScreen: React.FC<EntryScreenProps> = ({ onIgnite, onStart }) => {
           the sphere (see .ne-layout in index.css) so nothing covers it; on
           narrower screens it stacks at the bottom. */}
       <div className="ne-layout">
-        <div className="ne-content ne-intro">
+        <div ref={introRef} className="ne-content ne-intro">
           <p className="ne-rise ne-eyebrow flex items-center font-mono text-[10px] font-bold tracking-[0.4em] text-blue-300 uppercase" style={{ animationDelay: '0.1s' }}>
             Iron Man · Element synthesis
           </p>

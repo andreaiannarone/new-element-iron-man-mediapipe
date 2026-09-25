@@ -8,6 +8,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { createTechSphere } from './TechSphere';
 import BootLoader from './BootLoader';
 import { IGNITE_IMPACT_S, sound } from './sound';
+import { entrySphereSlot } from './entryLayout';
 
 declare global {
   interface Window {
@@ -261,6 +262,9 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
   const handOverlayRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Mirrors isLoading for the render loop (the frame-rate check waits for it).
+  const isLoadingRef = useRef(true);
+  isLoadingRef.current = isLoading;
   const [status, setStatus] = useState("Initializing 3D Environment...");
   const [handDetected, setHandDetected] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
@@ -296,9 +300,9 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
     faceDetectedRef.current = faceDetected;
   }, [faceDetected]);
 
-  // Audio cues for tracking: a rising pair when a hand is picked up, falling
-  // when it is lost (rate-limited, tracking can flicker), and one cue the
-  // first time a face is found.
+  // Audio cues for tracking: a soft rising pair when a hand is picked up
+  // (rate-limited, tracking can flicker) and one cue the first time a face
+  // is found.
   const lastHandCueRef = useRef(0);
   const handCueReadyRef = useRef(false);
   useEffect(() => {
@@ -306,10 +310,13 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       handCueReadyRef.current = true;
       return;
     }
+    // Only the pick-up is voiced, at most every few seconds: a cue on every
+    // loss gets tiring while playing.
+    if (!handDetected) return;
     const now = performance.now();
-    if (now - lastHandCueRef.current < 700) return;
+    if (now - lastHandCueRef.current < 3000) return;
     lastHandCueRef.current = now;
-    sound.blip(handDetected ? 'found' : 'lost');
+    sound.blip('found');
   }, [handDetected]);
   const faceCuedRef = useRef(false);
   useEffect(() => {
@@ -340,6 +347,8 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
     let cam: any;
     let scene: THREE.Scene;
     const detachPointer: Array<() => void> = [];
+    // Pushes the drawing-buffer height to the sphere's particle shader.
+    let syncViewport: () => void = () => {};
 
     const loadScript = (src: string) => {
       return new Promise((resolve, reject) => {
@@ -409,6 +418,9 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       roomGroup.add(gridGroup);
 
       const techSphere = createTechSphere();
+      const bufferSize = new THREE.Vector2();
+      syncViewport = () => techSphere.userData.setViewportHeight(renderer.getDrawingBufferSize(bufferSize).y);
+      syncViewport();
       techSphere.position.set(0, roomCenterY, 0);
       roomGroup.add(techSphere);
 
@@ -479,38 +491,85 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       const ENTRY_SCALE = 1.18;
       const ENTRY_LIFT = 2.6;
       // Portrait screens: the sphere is sized by the vertical field of view,
-      // so it would spill past the sides. Shrink it to fit the width (and the
-      // top part of the height) and lift it just under the top edge, leaving
-      // the lower half to the entry copy.
-      const ENTRY_PORTRAIT_MAX_W = 0.62; // share of the screen width
-      const ENTRY_PORTRAIT_MAX_H = 0.36; // share of the screen height
+      // so it would spill past the sides. It is fitted instead into the free
+      // band between the entry screen's top labels and its copy (measured by
+      // EntryScreen), centred in it and filling most of it. Without that
+      // measurement it falls back to fixed shares of the screen.
+      const ENTRY_SLOT_FILL = 0.82; // of the band's height; leaves room for the glow
+      const ENTRY_SLOT_MAX_W = 0.86; // of the screen width
+      const ENTRY_PORTRAIT_MAX_W = 0.62;
+      const ENTRY_PORTRAIT_MAX_H = 0.36;
       const ENTRY_PORTRAIT_TOP = 0.2; // gap above the sphere, in NDC units
+      /**
+       * Lift and scale that make the sphere span screen rows topPx..bottomPx
+       * (viewport px). A sphere off the view axis projects stretched towards
+       * the edge, so the edges are solved exactly: centre direction theta,
+       * half-angle alpha.
+       */
+      const spanRows = (topPx: number, bottomPx: number) => {
+        const h = window.innerHeight;
+        const tanHalf = Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2));
+        const a1 = Math.atan((1 - (2 * topPx) / h) * tanHalf);
+        const a2 = Math.atan((1 - (2 * bottomPx) / h) * tanHalf);
+        const lift = baseCamRadius * Math.tan((a1 + a2) / 2);
+        const distance = Math.hypot(baseCamRadius, lift);
+        return { lift, scale: (distance * Math.sin((a1 - a2) / 2)) / SPHERE_RADIUS };
+      };
+
       const entryFraming = () => {
         const aspect = camera.aspect;
         if (aspect >= 1) return { scale: ENTRY_SCALE, lift: ENTRY_LIFT };
-        const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-        const tanA = Math.min(ENTRY_PORTRAIT_MAX_W * tanHalf * aspect, ENTRY_PORTRAIT_MAX_H * tanHalf);
-        const scale = Math.min(ENTRY_SCALE, (baseCamRadius * Math.sin(Math.atan(tanA))) / SPHERE_RADIUS);
-        const centre = 1 - ENTRY_PORTRAIT_TOP - tanA / tanHalf;
+        let framed: { lift: number; scale: number };
+        if (entrySphereSlot.valid && entrySphereSlot.bottom > entrySphereSlot.top) {
+          const band = entrySphereSlot.bottom - entrySphereSlot.top;
+          const diameter = Math.min(band * ENTRY_SLOT_FILL, window.innerWidth * ENTRY_SLOT_MAX_W);
+          const mid = (entrySphereSlot.top + entrySphereSlot.bottom) / 2;
+          framed = spanRows(mid - diameter / 2, mid + diameter / 2);
+        } else {
+          const h = window.innerHeight;
+          const r = Math.min(ENTRY_PORTRAIT_MAX_W * aspect, ENTRY_PORTRAIT_MAX_H);
+          const top = (ENTRY_PORTRAIT_TOP / 2) * h;
+          framed = spanRows(top, top + r * h);
+        }
+        const scale = Math.min(ENTRY_SCALE, framed.scale);
+        const portraitLift = framed.lift;
         // Eased in as the screen turns portrait, so there is no jump at 1:1.
         const t = THREE.MathUtils.clamp((1 - aspect) / 0.3, 0, 1);
-        const lift = THREE.MathUtils.lerp(ENTRY_LIFT, baseCamRadius * tanHalf * centre, t);
+        const lift = THREE.MathUtils.lerp(ENTRY_LIFT, portraitLift, t);
         return { scale, lift };
       };
-      // Phones in camera mode: the webcam preview spans the bottom of the
-      // screen (full width, 16:9, 24px from the bottom edge; see the Webcam
-      // Window markup), so the sphere is centred in the space above it.
-      const ACTIVE_TOP_RESERVED = 64; // px under the top bar
-      const activeLift = () => {
+      // Phones in camera mode: the indicator stack covers the top right and
+      // the webcam preview spans the bottom, so the sphere is centred in the
+      // band between them (both measured) and shrunk if it would not fit.
+      // The pinch still scales it from there.
+      const ACTIVE_FILL = 0.86; // of the band's height / screen width
+      const ACTIVE_MARGIN = 12; // px kept clear under the indicators
+      const hudStack = () => document.querySelector('[data-hud-stack]');
+      const hudWebcam = () => document.querySelector('[data-hud-webcam]');
+      let activeCache = { lift: 0, fit: 1 };
+      let activeMeasuredAt = -Infinity;
+      const activeFraming = () => {
         const w = window.innerWidth;
         const h = window.innerHeight;
-        if (startModeRef.current !== 'camera' || w >= 640 || w >= h) return 0;
-        const webcamTop = h - 24 - ((w - 32) * 9) / 16;
-        const centreNdc = 1 - (ACTIVE_TOP_RESERVED + webcamTop) / h;
-        const tanHalf = Math.tan(THREE.MathUtils.degToRad(BASE_FOV / 2));
-        return Math.max(0, baseCamRadius * tanHalf * centreNdc);
+        if (startModeRef.current !== 'camera' || w >= 640 || w >= h) return { lift: 0, fit: 1 };
+        // Layout reads are throttled: the band only changes on resize.
+        const now = performance.now();
+        if (now - activeMeasuredAt < 250) return activeCache;
+        activeMeasuredAt = now;
+        const stack = hudStack();
+        const webcam = hudWebcam();
+        if (!stack || !webcam) return activeCache;
+        const top = stack.getBoundingClientRect().bottom + ACTIVE_MARGIN;
+        const bottom = webcam.getBoundingClientRect().top;
+        if (bottom - top < 40) return activeCache;
+        const diameter = Math.min((bottom - top) * ACTIVE_FILL, w * ACTIVE_FILL);
+        const mid = (top + bottom) / 2;
+        const framed = spanRows(mid - diameter / 2, mid + diameter / 2);
+        activeCache = { lift: framed.lift, fit: Math.min(1, framed.scale) };
+        return activeCache;
       };
-      let smoothedLift = startModeRef.current === null ? entryFraming().lift : activeLift();
+      let smoothedLift = startModeRef.current === null ? entryFraming().lift : activeFraming().lift;
+      let smoothedFit = 1;
       let leftEntry = startModeRef.current !== null;
 
       const gridColor = 0x3b82f6;
@@ -670,9 +729,35 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       camera.position.set(0, baseCamY, baseCamRadius);
       camera.lookAt(0, roomCenterY, 0);
 
+      // Adaptive resolution: if the frame rate stays low (older phones), step
+      // the pixel ratio down, never below 1 and never back up, so it cannot
+      // oscillate. Skipped while the tracking models load, which stalls frames.
+      let pixelRatio = renderer.getPixelRatio();
+      let fpsFrames = 0;
+      let fpsSince = performance.now();
+      let slowSeconds = 0;
+      const checkFrameRate = () => {
+        fpsFrames++;
+        const now = performance.now();
+        if (now - fpsSince < 1000) return;
+        const fps = (fpsFrames * 1000) / (now - fpsSince);
+        fpsFrames = 0;
+        fpsSince = now;
+        const measuring = !document.hidden && !(startModeRef.current === 'camera' && isLoadingRef.current);
+        slowSeconds = measuring && fps < 45 && pixelRatio > 1 ? slowSeconds + 1 : 0;
+        if (slowSeconds >= 2) {
+          slowSeconds = 0;
+          pixelRatio = Math.max(1, pixelRatio - 0.25);
+          renderer.setPixelRatio(pixelRatio);
+          composer.setPixelRatio(pixelRatio);
+          syncViewport();
+        }
+      };
+
       // Render loop
       const animate = () => {
         animationId = requestAnimationFrame(animate);
+        checkFrameRate();
         controls.update();
 
         // Face Movement Smoothing
@@ -694,7 +779,9 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
           targetScale = DEFAULT_HAND_SCALE;
           leftEntry = true;
         }
-        smoothedLift += ((inEntry ? entry.lift : activeLift()) - smoothedLift) * 0.045;
+        const active = activeFraming();
+        smoothedLift += ((inEntry ? entry.lift : active.lift) - smoothedLift) * 0.045;
+        smoothedFit += ((inEntry ? 1 : active.fit) - smoothedFit) * 0.045;
         techSphere.position.y = roomCenterY + smoothedLift;
 
         // Grid fades from greyscale to blue when the visitor enters.
@@ -756,7 +843,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
 
         // Apply Scale to Sphere: contracts while charging, pops on impact
         const pulse = 1 + (burst * 0.04 - charge * 0.03) * motion;
-        techSphere.scale.setScalar(smoothedScale * pulse);
+        techSphere.scale.setScalar(smoothedScale * smoothedFit * pulse);
 
         // Auto rotate the tech sphere (spun up by the power-up)
         const spin = 1 + (charge * 4 + burst * 3) * motion;
@@ -984,6 +1071,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       const height = containerRef.current.clientHeight;
       if (renderer) renderer.setSize(width, height);
       if (composer) composer.setSize(width, height);
+      syncViewport();
       if (camera) {
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
@@ -1039,7 +1127,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       <canvas ref={canvasRef} className="w-full h-full block" />
 
       {/* Indicators: Top Right of Main Screen */}
-      <div className={`absolute top-6 right-4 sm:right-6 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 z-50 pointer-events-none transition-opacity duration-700 motion-reduce:transition-none ${startMode !== null ? 'opacity-100' : 'opacity-0'}`}>
+      <div data-hud-stack className={`absolute top-6 right-4 sm:right-6 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 z-50 pointer-events-none transition-opacity duration-700 motion-reduce:transition-none ${startMode !== null ? 'opacity-100' : 'opacity-0'}`}>
         {/* Live Indicator: reflects whether the scene is driven by the webcam
             or by the pointer fallback. */}
         <div data-hud="live" className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg w-fit">
@@ -1071,7 +1159,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       </div>
 
       {/* Webcam Window */}
-      <div className={`absolute bottom-6 left-4 right-4 w-auto rounded-3xl overflow-hidden bg-black/40 backdrop-blur-md z-40 group transition-opacity duration-700 motion-reduce:transition-none border border-white/10 sm:left-auto sm:right-6 sm:w-72 ${startMode === 'camera' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+      <div data-hud-webcam className={`absolute bottom-6 left-4 right-4 w-auto rounded-3xl overflow-hidden bg-black/40 backdrop-blur-md z-40 group transition-opacity duration-700 motion-reduce:transition-none border border-white/10 sm:left-auto sm:right-6 sm:w-72 ${startMode === 'camera' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className="relative aspect-video bg-black/50">
           <video
             ref={videoRef}

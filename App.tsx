@@ -79,7 +79,12 @@ const App: React.FC = () => {
             <p className="text-center text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
               {pointerFallback
               ? 'MOVE OR DRAG TO LOOK AROUND & SCROLL OR PINCH TO ZOOM'
-              : 'MOVE HEAD FOR BACKGROUND & PINCH IN WEBCAM TO ZOOM'}
+              : (
+                <>
+                  <span className="sm:hidden">MOVE HEAD FOR BACKGROUND &amp; PINCH FOR ZOOM</span>
+                  <span className="hidden sm:inline">MOVE HEAD FOR BACKGROUND &amp; PINCH IN WEBCAM TO ZOOM</span>
+                </>
+              )}
             </p>
           </div>
 

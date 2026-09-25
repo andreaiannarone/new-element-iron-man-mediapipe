@@ -35,10 +35,16 @@ const fragmentShader = `
 // Shaders for particles (procedural, no image texture)
 const particleVertexShader = `
   uniform float size;
+  uniform float viewportHeight;
   void main() {
     vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-    // Size attenuation based on depth
-    gl_PointSize = size * ( 400.0 / -mvPosition.z );
+    // Size attenuation based on depth, scaled with the sphere and with the
+    // drawing buffer, so the particles keep the same proportion to the sphere
+    // at any size, resolution or pixel ratio. Calibrated on a 1800px-tall
+    // buffer at the scene's 85 degree fov (projectionMatrix[1][1] = 1.091).
+    float objectScale = length( modelMatrix[0].xyz );
+    float resolution = projectionMatrix[1][1] * viewportHeight / 1964.0;
+    gl_PointSize = size * objectScale * resolution * ( 400.0 / -mvPosition.z );
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -88,7 +94,8 @@ export function createTechSphere(): THREE.Group {
   const atomMaterial = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0x0567ba) },
-      size: { value: 1.2 } 
+      size: { value: 1.2 },
+      viewportHeight: { value: 1800 },
     },
     vertexShader: particleVertexShader,
     fragmentShader: particleFragmentShader,
@@ -112,6 +119,11 @@ export function createTechSphere(): THREE.Group {
 
   group.add(spherePoints);
   group.add(sphereLines);
+
+  // Called on setup and resize with the renderer's drawing-buffer height.
+  group.userData.setViewportHeight = (height: number) => {
+    atomMaterial.uniforms.viewportHeight.value = height;
+  };
 
   return group;
 }
