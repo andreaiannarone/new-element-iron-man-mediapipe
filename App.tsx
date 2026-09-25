@@ -2,9 +2,14 @@ import React, { useState } from 'react';
 import { Info } from 'lucide-react';
 import FaceTrackingRoom from './components/FaceTrackingRoom';
 import AboutDialog from './components/AboutDialog';
+import EntryScreen, { type StartMode } from './components/EntryScreen';
 
 const App: React.FC = () => {
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [pointerFallback, setPointerFallback] = useState(false);
+  // null until the visitor chooses on the entry screen.
+  const [startMode, setStartMode] = useState<StartMode | null>(null);
+  const started = startMode !== null;
 
   return (
     <main className="relative w-screen h-screen h-dvh min-h-screen min-h-dvh overflow-hidden bg-black selection:bg-blue-500/30">
@@ -18,15 +23,15 @@ const App: React.FC = () => {
 
       {/* Main 3D Environment */}
       <div className="absolute inset-0 z-0">
-        <FaceTrackingRoom />
+        <FaceTrackingRoom onPointerFallbackChange={setPointerFallback} startMode={startMode} />
       </div>
 
       {/* Overlay UI - Styled to match Top Right Icons */}
-      <div className="absolute top-6 left-6 z-10 pointer-events-none">
-        <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg w-fit">
+      <div className={`absolute top-6 left-4 z-10 pointer-events-none sm:left-6 transition-opacity duration-700 motion-reduce:transition-none ${started ? 'opacity-100' : 'opacity-0'}`}>
+        <div data-hud="brand" className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg w-fit">
           <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
           <span className="text-[11px] font-bold text-white/90 uppercase tracking-wider font-mono">
-            NEW ELEMENT - IRON MAN
+            NEW ELEMENT<span className="hidden sm:inline"> - IRON MAN</span>
           </span>
         </div>
       </div>
@@ -34,7 +39,7 @@ const App: React.FC = () => {
       {/* Bottom Left: Instruction Badge.
           Sits above the webcam window (z-40) so the info button stays clickable
           where the two overlap on narrow screens. */}
-      <div className="absolute bottom-6 left-4 right-4 z-50 pointer-events-none sm:left-6 sm:right-auto">
+      <div className={`absolute bottom-6 left-4 right-4 z-50 pointer-events-none transition-opacity duration-700 delay-200 motion-reduce:transition-none sm:left-6 sm:right-auto ${started ? 'opacity-100' : 'opacity-0'}`}>
         <div className="flex w-full items-center gap-2 sm:w-fit">
 
           {/* Info button: its own pill, matching the badge's glass treatment. */}
@@ -52,7 +57,9 @@ const App: React.FC = () => {
           <div className="flex w-full min-w-0 items-center justify-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg sm:w-fit">
             <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-pulse shrink-0" />
             <p className="text-center text-[10px] font-bold text-zinc-300 uppercase tracking-wider font-mono">
-              MOVE HEAD FOR BACKGROUND & PINCH IN WEBCAM TO ZOOM
+              {pointerFallback
+              ? 'MOVE OR DRAG TO LOOK AROUND & SCROLL OR PINCH TO ZOOM'
+              : 'MOVE HEAD FOR BACKGROUND & PINCH IN WEBCAM TO ZOOM'}
             </p>
           </div>
 
@@ -60,6 +67,8 @@ const App: React.FC = () => {
       </div>
 
       <AboutDialog open={aboutOpen} onClose={() => setAboutOpen(false)} />
+
+      {!started ? <EntryScreen onStart={setStartMode} /> : null}
 
     </main>
   );

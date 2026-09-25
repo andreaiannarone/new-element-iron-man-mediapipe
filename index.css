@@ -9,3 +9,125 @@
   --font-sans: 'Play', sans-serif;
   --font-mono: 'Play', sans-serif;
 }
+
+/* Entry screen: content rises into place without needing JS state. */
+@keyframes ne-rise {
+  from { opacity: 0; transform: translateY(0.75rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ne-rise {
+  animation: ne-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ne-rise { animation: none; }
+}
+
+/* Boot loader: HUD readout shown while the tracking engines load. */
+@keyframes ne-ping {
+  0%        { transform: scale(1); opacity: 0.8; }
+  80%, 100% { transform: scale(3); opacity: 0; }
+}
+@keyframes ne-boot-label {
+  from { opacity: 0; transform: translateY(0.25rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ne-boot-in {
+  from { opacity: 0; transform: translateY(-0.35rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+/* Enters just after the top badges start fading in. */
+.ne-boot-in { animation: ne-boot-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both; }
+.ne-ping { animation: ne-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.ne-boot-label { animation: ne-boot-label 0.35s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ne-ping, .ne-boot-label, .ne-boot-in { animation: none; }
+}
+
+/* Entry screen: primary button glow; content sinks away on exit. */
+@keyframes ne-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes ne-cta-glow {
+  0%, 100% { box-shadow: 0 8px 30px rgba(59, 130, 246, 0.25); }
+  50%      { box-shadow: 0 8px 36px rgba(59, 130, 246, 0.5); }
+}
+
+.ne-blink { animation: ne-blink 1.6s ease-in-out infinite; }
+.ne-cta { animation: ne-cta-glow 2.4s ease-in-out infinite 1.2s; }
+
+.ne-content { transition: transform 0.7s cubic-bezier(0.65, 0, 0.35, 1); }
+.ne-entry.is-leaving .ne-content { transform: translateY(1.5rem); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ne-cta, .ne-blink { animation: none; }
+  .ne-content { transition: none; }
+  .ne-entry.is-leaving .ne-content { transform: none; }
+}
+
+/*
+  Entry screen layout.
+  Narrow screens: one centred column at the bottom.
+  Wide screens: two columns either side of the sphere. The sphere's size
+  follows the viewport height (about 62vh across), so each column gets
+  whatever width is left beside it: --ne-col.
+*/
+.ne-layout {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 1rem 7vh;
+  text-align: center;
+}
+.ne-intro, .ne-actions { width: 100%; max-width: 26rem; }
+.ne-eyebrow { justify-content: center; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9); }
+.ne-title { font-size: clamp(1.45rem, 7vw, 2.75rem); text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6); }
+.ne-title-break { display: none; }
+.ne-chips { justify-content: center; }
+.ne-actions { margin-top: 1.75rem; }
+.ne-buttons { grid-template-columns: 1fr; }
+.ne-note { justify-content: center; text-align: left; }
+
+/* Short phones: tighten the stack so it stays clear of the sphere. */
+@media (max-width: 639px) and (max-height: 740px) {
+  .ne-layout { padding-bottom: 4.5vh; }
+  .ne-title { margin-top: 0.75rem; }
+  .ne-chips { margin-top: 1rem; }
+  .ne-actions { margin-top: 1.25rem; }
+  .ne-buttons button { padding-top: 0.8rem; padding-bottom: 0.8rem; }
+  .ne-note { margin-top: 0.9rem; }
+}
+
+@media (min-width: 640px) {
+  .ne-layout { padding-bottom: 10vh; }
+  .ne-intro, .ne-actions { max-width: 36rem; }
+  .ne-buttons { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 1200px) and (min-aspect-ratio: 3/2) {
+  .ne-layout {
+    --ne-col: min(30rem, calc(50vw - 33vh - 4.5rem));
+    inset: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4rem;
+    text-align: left;
+  }
+  .ne-intro { width: var(--ne-col); max-width: none; }
+  .ne-actions {
+    width: min(var(--ne-col), 19rem);
+    max-width: none;
+    margin-top: 0;
+  }
+  .ne-eyebrow { justify-content: flex-start; white-space: nowrap; letter-spacing: 0.3em; }
+  /* Three lines, sized so the longest ("the controller") fills the column. */
+  .ne-title { font-size: min(3.25rem, calc(var(--ne-col) / 9.4)); }
+  .ne-title-break { display: block; }
+  .ne-chips { justify-content: flex-start; }
+  .ne-buttons { grid-template-columns: 1fr; }
+  .ne-note { justify-content: flex-start; }
+}

@@ -6,7 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { createTechSphere } from './TechSphere';
-import { Loader2 } from 'lucide-react';
+import BootLoader from './BootLoader';
 
 declare global {
   interface Window {
@@ -239,7 +239,17 @@ const smoothHandLandmarks = (previousHand: any[] | null, nextHand: any[]) => {
   });
 };
 
-const FaceTrackingRoom: React.FC = () => {
+interface FaceTrackingRoomProps {
+  /** Notified when the scene switches between webcam tracking and pointer input. */
+  onPointerFallbackChange?: (active: boolean) => void;
+  /**
+   * The visitor's choice on the entry screen. While null the scene renders but
+   * the webcam is never requested.
+   */
+  startMode?: 'camera' | 'pointer' | null;
+}
+
+const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackChange, startMode = null }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const handOverlayRef = useRef<HTMLCanvasElement>(null);
@@ -248,11 +258,41 @@ const FaceTrackingRoom: React.FC = () => {
   const [status, setStatus] = useState("Initializing 3D Environment...");
   const [handDetected, setHandDetected] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
-  const loadingOverlay = isLoading ? (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 flex items-center justify-center gap-2 bg-zinc-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-blue-500/30 text-blue-400 z-[9999] pointer-events-none">
-      <Loader2 className="w-4 h-4 animate-spin" />
-      <span className="text-center text-xs font-medium tracking-wide uppercase">{status}</span>
-    </div>
+  const [pointerFallback, setPointerFallback] = useState(false);
+  // Assigned once the scene exists; called from the init sequence below.
+  const enablePointerFallbackRef = useRef<() => void>(() => {});
+  const disablePointerFallbackRef = useRef<() => void>(() => {});
+  // Mirrors faceDetected so delayed callbacks read the current value.
+  const faceDetectedRef = useRef(false);
+  // The grid room stays hidden behind the entry screen: only the sphere shows.
+  const gridGroupRef = useRef<THREE.Group | null>(null);
+  const startModeRef = useRef<'camera' | 'pointer' | null>(startMode);
+  startModeRef.current = startMode;
+
+
+  // Resolved by the entry screen; the init sequence awaits it before it
+  // touches the webcam.
+  const startResolveRef = useRef<((mode: 'camera' | 'pointer') => void) | null>(null);
+  const startPromiseRef = useRef<Promise<'camera' | 'pointer'> | null>(null);
+  if (!startPromiseRef.current) {
+    startPromiseRef.current = new Promise((resolve) => {
+      startResolveRef.current = resolve;
+    });
+  }
+
+  useEffect(() => {
+    if (startMode) startResolveRef.current?.(startMode);
+  }, [startMode]);
+
+  useEffect(() => {
+    faceDetectedRef.current = faceDetected;
+  }, [faceDetected]);
+
+  useEffect(() => {
+    onPointerFallbackChange?.(pointerFallback);
+  }, [pointerFallback, onPointerFallbackChange]);
+  const loadingOverlay = startMode !== null ? (
+    <BootLoader visible={isLoading} status={status} />
   ) : null;
 
   useEffect(() => {
@@ -268,6 +308,7 @@ const FaceTrackingRoom: React.FC = () => {
     let hands: any;
     let cam: any;
     let scene: THREE.Scene;
+    const detachPointer: Array<() => void> = [];
 
     const loadScript = (src: string) => {
       return new Promise((resolve, reject) => {
@@ -329,6 +370,13 @@ const FaceTrackingRoom: React.FC = () => {
       const roomGroup = new THREE.Group();
       scene.add(roomGroup);
 
+      // The grid planes live in their own group so their colour can be driven
+      // independently of the sphere: greyscale behind the entry screen, blue
+      // once the visitor enters.
+      const gridGroup = new THREE.Group();
+      gridGroupRef.current = gridGroup;
+      roomGroup.add(gridGroup);
+
       const techSphere = createTechSphere();
       techSphere.position.set(0, roomCenterY, 0);
       roomGroup.add(techSphere);
@@ -369,30 +417,72 @@ const FaceTrackingRoom: React.FC = () => {
         );
       };
 
+      const baseCamRadius = 25;
+      /** Radius of the icosahedron in TechSphere.ts. */
+      const SPHERE_RADIUS = 10;
+
+      // Entry presentation: sphere larger and lifted, copy sits below it.
+      const ENTRY_SCALE = 1.18;
+      const ENTRY_LIFT = 2.6;
+      // Portrait screens: the sphere is sized by the vertical field of view,
+      // so it would spill past the sides. Shrink it to fit the width (and the
+      // top part of the height) and lift it just under the top edge, leaving
+      // the lower half to the entry copy.
+      const ENTRY_PORTRAIT_MAX_W = 0.62; // share of the screen width
+      const ENTRY_PORTRAIT_MAX_H = 0.36; // share of the screen height
+      const ENTRY_PORTRAIT_TOP = 0.2; // gap above the sphere, in NDC units
+      const entryFraming = () => {
+        const aspect = camera.aspect;
+        if (aspect >= 1) return { scale: ENTRY_SCALE, lift: ENTRY_LIFT };
+        const tanHalf = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+        const tanA = Math.min(ENTRY_PORTRAIT_MAX_W * tanHalf * aspect, ENTRY_PORTRAIT_MAX_H * tanHalf);
+        const scale = Math.min(ENTRY_SCALE, (baseCamRadius * Math.sin(Math.atan(tanA))) / SPHERE_RADIUS);
+        const centre = 1 - ENTRY_PORTRAIT_TOP - tanA / tanHalf;
+        // Eased in as the screen turns portrait, so there is no jump at 1:1.
+        const t = THREE.MathUtils.clamp((1 - aspect) / 0.3, 0, 1);
+        const lift = THREE.MathUtils.lerp(ENTRY_LIFT, baseCamRadius * tanHalf * centre, t);
+        return { scale, lift };
+      };
+      let smoothedLift = startModeRef.current === null ? entryFraming().lift : 0;
+      let leftEntry = startModeRef.current !== null;
+
       const gridColor = 0x3b82f6;
+      // Idle (entry screen) vs active tone; eased in the animation loop.
+      const GRID_IDLE = new THREE.Color(0x9ca3af);
+      const GRID_ACTIVE = new THREE.Color(gridColor);
+      const GRID_IDLE_OPACITY = 0.12;
+      const GRID_ACTIVE_OPACITY = 0.4;
+      let gridTone = startModeRef.current === null ? 0 : 1;
       const floor = createGridPlane(roomSize, roomSize, cellSize, gridColor);
       floor.rotation.x = -Math.PI / 2;
       floor.position.set(0, roomCenterY - roomHeight / 2, 0);
-      roomGroup.add(floor);
+      gridGroup.add(floor);
 
       const ceiling = createGridPlane(roomSize, roomSize, cellSize, gridColor);
       ceiling.rotation.x = Math.PI / 2;
       ceiling.position.set(0, roomCenterY + roomHeight / 2, 0);
-      roomGroup.add(ceiling);
+      gridGroup.add(ceiling);
 
       const backWall = createGridPlane(roomSize, roomHeight, cellSize, gridColor);
       backWall.position.set(0, roomCenterY, -roomSize / 2);
-      roomGroup.add(backWall);
+      gridGroup.add(backWall);
 
       const leftWall = createGridPlane(roomSize, roomHeight, cellSize, gridColor);
       leftWall.rotation.y = Math.PI / 2;
       leftWall.position.set(-roomSize / 2, roomCenterY, 0);
-      roomGroup.add(leftWall);
+      gridGroup.add(leftWall);
 
       const rightWall = createGridPlane(roomSize, roomHeight, cellSize, gridColor);
       rightWall.rotation.y = -Math.PI / 2;
       rightWall.position.set(roomSize / 2, roomCenterY, 0);
-      roomGroup.add(rightWall);
+      gridGroup.add(rightWall);
+
+      // The planes are built with the active look: apply the starting tone.
+      for (const plane of gridGroup.children) {
+        const material = (plane as THREE.LineSegments).material as THREE.LineBasicMaterial;
+        material.color.copy(GRID_IDLE).lerp(GRID_ACTIVE, gridTone);
+        material.opacity = THREE.MathUtils.lerp(GRID_IDLE_OPACITY, GRID_ACTIVE_OPACITY, gridTone);
+      }
 
       // Animation variables
       let targetYaw = 0;
@@ -407,14 +497,107 @@ const FaceTrackingRoom: React.FC = () => {
       let targetSlideX = 0;
       let smoothedSlideX = 0;
 
+      // ---- Pointer fallback ----------------------------------------------
+      // If the webcam is unusable (permission denied, no device, a dark room)
+      // the same scene stays controllable with mouse or touch, so the
+      // experience is never a blank screen.
+      let pointerEnabled = false;
+      let pointerScale = DEFAULT_HAND_SCALE;
+
+      // Same mapping the face tracker uses, so both inputs feel identical.
+      const applyPointerLook = (px: number, py: number) => {
+        targetYaw = px * 0.95;
+        targetPitch = -py * 0.75;
+        targetOffsetX = px * 1.2;
+        targetOffsetY = -py * 1.1;
+        targetSlideX = px * 3.0;
+      };
+
+      const applyPointerScale = (next: number) => {
+        pointerScale = THREE.MathUtils.clamp(next, CLOSED_HAND_SCALE, OPEN_HAND_SCALE);
+        targetScale = pointerScale;
+      };
+
+      const toLocal = (clientX: number, clientY: number) => {
+        const el = containerRef.current;
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return {
+          x: ((clientX - rect.left) / rect.width - 0.5) * 2,
+          y: ((clientY - rect.top) / rect.height - 0.5) * 2,
+        };
+      };
+
+      const onPointerMove = (event: PointerEvent) => {
+        if (!pointerEnabled || event.pointerType === 'touch') return;
+        const local = toLocal(event.clientX, event.clientY);
+        if (local) applyPointerLook(local.x, local.y);
+      };
+
+      const onWheel = (event: WheelEvent) => {
+        if (!pointerEnabled) return;
+        event.preventDefault();
+        applyPointerScale(pointerScale - event.deltaY * 0.0015);
+      };
+
+      // One finger looks around, two fingers pinch to zoom.
+      let pinchStartDistance = 0;
+      let pinchStartScale = DEFAULT_HAND_SCALE;
+      const touchDistance = (touches: TouchList) =>
+        Math.hypot(
+          touches[0].clientX - touches[1].clientX,
+          touches[0].clientY - touches[1].clientY
+        );
+
+      const onTouchStart = (event: TouchEvent) => {
+        if (!pointerEnabled || event.touches.length !== 2) return;
+        pinchStartDistance = touchDistance(event.touches);
+        pinchStartScale = pointerScale;
+      };
+
+      const onTouchMove = (event: TouchEvent) => {
+        if (!pointerEnabled || !event.touches.length) return;
+        event.preventDefault();
+        if (event.touches.length >= 2 && pinchStartDistance > 0) {
+          applyPointerScale(pinchStartScale * (touchDistance(event.touches) / pinchStartDistance));
+          return;
+        }
+        const local = toLocal(event.touches[0].clientX, event.touches[0].clientY);
+        if (local) applyPointerLook(local.x, local.y);
+      };
+
+      const surface = renderer.domElement;
+      window.addEventListener('pointermove', onPointerMove);
+      surface.addEventListener('wheel', onWheel, { passive: false });
+      surface.addEventListener('touchstart', onTouchStart, { passive: true });
+      surface.addEventListener('touchmove', onTouchMove, { passive: false });
+      detachPointer.push(() => {
+        window.removeEventListener('pointermove', onPointerMove);
+        surface.removeEventListener('wheel', onWheel);
+        surface.removeEventListener('touchstart', onTouchStart);
+        surface.removeEventListener('touchmove', onTouchMove);
+      });
+
+      enablePointerFallbackRef.current = () => {
+        if (pointerEnabled) return;
+        pointerEnabled = true;
+        setPointerFallback(true);
+        setIsLoading(false);
+      };
+
+      disablePointerFallbackRef.current = () => {
+        if (!pointerEnabled) return;
+        pointerEnabled = false;
+        setPointerFallback(false);
+      };
+
       // Scaling variables
       let targetScale = DEFAULT_HAND_SCALE;
-      let smoothedScale = DEFAULT_HAND_SCALE;
+      let smoothedScale = startModeRef.current === null ? entryFraming().scale : DEFAULT_HAND_SCALE;
       let smoothedSpreadRatio: number | null = null;
       let smoothedHandLandmarks: any[] | null = null;
       let invalidHandFrames = 0;
 
-      const baseCamRadius = 25;
       const baseCamY = 0;
 
       camera.position.set(0, baseCamY, baseCamRadius);
@@ -433,6 +616,30 @@ const FaceTrackingRoom: React.FC = () => {
         smoothedSlideX += (targetSlideX - smoothedSlideX) * 0.12;
 
         smoothedScale += (targetScale - smoothedScale) * HAND_ZOOM_SENSITIVITY.scaleSmoothing;
+
+        // Entry framing: hold the sphere big and high until the visitor enters,
+        // then release it to its normal size and position.
+        const inEntry = startModeRef.current === null;
+        const entry = entryFraming();
+        if (inEntry) {
+          targetScale = entry.scale;
+        } else if (!leftEntry) {
+          targetScale = DEFAULT_HAND_SCALE;
+          leftEntry = true;
+        }
+        smoothedLift += ((inEntry ? entry.lift : 0) - smoothedLift) * 0.045;
+        techSphere.position.y = roomCenterY + smoothedLift;
+
+        // Grid fades from greyscale to blue when the visitor enters.
+        const toneTarget = startModeRef.current === null ? 0 : 1;
+        if (Math.abs(toneTarget - gridTone) > 0.001) {
+          gridTone += (toneTarget - gridTone) * 0.045;
+          for (const plane of gridGroup.children) {
+            const material = (plane as THREE.LineSegments).material as THREE.LineBasicMaterial;
+            material.color.copy(GRID_IDLE).lerp(GRID_ACTIVE, gridTone);
+            material.opacity = THREE.MathUtils.lerp(GRID_IDLE_OPACITY, GRID_ACTIVE_OPACITY, gridTone);
+          }
+        }
 
         const slideX = smoothedOffsetX * 2.4 + smoothedSlideX;
         const slideY = smoothedOffsetY * 1.8 + smoothedPitch * 1.2;
@@ -453,6 +660,16 @@ const FaceTrackingRoom: React.FC = () => {
 
       // Sequential loading
       try {
+        // Nothing above this line touches the webcam. Wait for the visitor to
+        // ask for it on the entry screen; if they chose mouse and touch, the
+        // pointer fallback takes over and no permission is ever requested.
+        const chosen = await startPromiseRef.current;
+        if (!isMounted) return;
+        if (chosen === 'pointer') {
+          enablePointerFallbackRef.current();
+          return;
+        }
+
         // Step 1: Load FaceMesh Script
         setStatus("Loading Face Tracking Engine...");
         await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.min.js');
@@ -485,6 +702,8 @@ const FaceTrackingRoom: React.FC = () => {
             return;
           }
           setFaceDetected(true);
+          // Real tracking takes over as soon as a face appears.
+          disablePointerFallbackRef.current();
           const landmarks = results.multiFaceLandmarks[0];
           const nose = landmarks[6];
           const nx = (nose.x - 0.5) * 2;
@@ -622,6 +841,11 @@ const FaceTrackingRoom: React.FC = () => {
           setStatus("Active");
           // Fallback if onResults never fires
           setTimeout(() => setIsLoading(false), 2000);
+          // Camera is running but nothing is being tracked (dark room, covered
+          // lens, model that never loaded): let mouse and touch drive instead.
+          setTimeout(() => {
+            if (isMounted && !faceDetectedRef.current) enablePointerFallbackRef.current();
+          }, 8000);
 
         } else {
           throw new Error("Camera Utils failed");
@@ -630,6 +854,8 @@ const FaceTrackingRoom: React.FC = () => {
       } catch (error) {
         console.error("Initialization sequence failed:", error);
         setStatus("Error: " + (error as any).message);
+        // No webcam: the scene is still fully controllable.
+        enablePointerFallbackRef.current();
         // Ensure loader disappears so they can at least see the scene
         setTimeout(() => setIsLoading(false), 2000);
       }
@@ -653,6 +879,7 @@ const FaceTrackingRoom: React.FC = () => {
     return () => {
       isMounted = false;
       window.removeEventListener('resize', handleResize);
+      detachPointer.forEach((off) => off());
       cancelAnimationFrame(animationId);
 
       // Safe cleanup
@@ -697,11 +924,14 @@ const FaceTrackingRoom: React.FC = () => {
       <canvas ref={canvasRef} className="w-full h-full block" />
 
       {/* Indicators: Top Right of Main Screen */}
-      <div className="absolute top-6 right-6 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 z-50 pointer-events-none">
-        {/* Live Indicator */}
-        <div className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg w-fit">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-          <span className="text-[11px] font-bold text-white/90 uppercase tracking-wider font-mono">LIVE TRACKING</span>
+      <div className={`absolute top-6 right-4 sm:right-6 flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 z-50 pointer-events-none transition-opacity duration-700 motion-reduce:transition-none ${startMode !== null ? 'opacity-100' : 'opacity-0'}`}>
+        {/* Live Indicator: reflects whether the scene is driven by the webcam
+            or by the pointer fallback. */}
+        <div data-hud="live" className="flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 shadow-lg w-fit">
+          <div className={`w-2 h-2 rounded-full animate-pulse ${pointerFallback ? 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`} />
+          <span className="text-[11px] font-bold text-white/90 uppercase tracking-wider font-mono">
+            {pointerFallback ? 'MOUSE / TOUCH' : 'LIVE TRACKING'}
+          </span>
         </div>
 
         {/* Face Detection Indicator */}
@@ -726,7 +956,7 @@ const FaceTrackingRoom: React.FC = () => {
       </div>
 
       {/* Webcam Window */}
-      <div className="absolute bottom-6 left-4 right-4 w-auto rounded-3xl overflow-hidden bg-black/40 backdrop-blur-md z-40 group hover:opacity-100 transition-opacity border border-white/10 sm:left-auto sm:right-6 sm:w-72">
+      <div className={`absolute bottom-6 left-4 right-4 w-auto rounded-3xl overflow-hidden bg-black/40 backdrop-blur-md z-40 group transition-opacity duration-700 motion-reduce:transition-none border border-white/10 sm:left-auto sm:right-6 sm:w-72 ${startMode === 'camera' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className="relative aspect-video bg-black/50">
           <video
             ref={videoRef}
