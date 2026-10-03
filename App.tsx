@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Info, Volume2, VolumeX } from 'lucide-react';
 import FaceTrackingRoom from './components/FaceTrackingRoom';
 import AboutDialog from './components/AboutDialog';
+import SettingsMenu from './components/SettingsMenu';
 import EntryScreen, { type StartMode } from './components/EntryScreen';
 import { sound } from './components/sound';
 
@@ -58,6 +59,9 @@ const App: React.FC = () => {
           >
             <Info className="h-3.5 w-3.5" />
           </button>
+
+          {/* Settings: render quality menu, opens upwards */}
+          <SettingsMenu />
 
           {/* Sound toggle, same pill as the info button */}
           <button

@@ -9,6 +9,7 @@ import { createTechSphere } from './TechSphere';
 import BootLoader from './BootLoader';
 import { IGNITE_IMPACT_S, sound } from './sound';
 import { entrySphereSlot } from './entryLayout';
+import { quality, qualityPixelRatio } from './quality';
 
 declare global {
   interface Window {
@@ -347,6 +348,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
     let cam: any;
     let scene: THREE.Scene;
     const detachPointer: Array<() => void> = [];
+    let detachQuality: () => void = () => {};
     // Pushes the drawing-buffer height to the sphere's particle shader.
     let syncViewport: () => void = () => {};
 
@@ -377,7 +379,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
 
       try {
         renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: "high-performance" });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio for performance
+        renderer.setPixelRatio(qualityPixelRatio(quality.current));
         renderer.setSize(width, height);
         renderer.toneMappingExposure = 1.0;
       } catch (e) {
@@ -612,12 +614,35 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       rightWall.position.set(roomSize / 2, roomCenterY, 0);
       gridGroup.add(rightWall);
 
+      // Grid lines are one buffer pixel wide, so at a lower pixel ratio they
+      // cover more of the screen and the bloom makes the room glow brighter.
+      // Their opacity is scaled down to keep the look of the high setting.
+      let gridOpacityScale = 1;
+      const syncGridOpacityScale = () => {
+        gridOpacityScale = Math.min(1, renderer.getPixelRatio() / qualityPixelRatio('high'));
+      };
+      syncGridOpacityScale();
+
+      const applyGridTone = () => {
+        for (const plane of gridGroup.children) {
+          const material = (plane as THREE.LineSegments).material as THREE.LineBasicMaterial;
+          material.color.copy(GRID_IDLE).lerp(GRID_ACTIVE, gridTone);
+          material.opacity = THREE.MathUtils.lerp(GRID_IDLE_OPACITY, GRID_ACTIVE_OPACITY, gridTone) * gridOpacityScale;
+        }
+      };
+
       // The planes are built with the active look: apply the starting tone.
-      for (const plane of gridGroup.children) {
-        const material = (plane as THREE.LineSegments).material as THREE.LineBasicMaterial;
-        material.color.copy(GRID_IDLE).lerp(GRID_ACTIVE, gridTone);
-        material.opacity = THREE.MathUtils.lerp(GRID_IDLE_OPACITY, GRID_ACTIVE_OPACITY, gridTone);
-      }
+      applyGridTone();
+
+      // Quality changes from the settings menu: the pixel ratio also scales
+      // the bloom pass, and the sphere's point size follows the buffer height.
+      const applyPixelRatio = (ratio: number) => {
+        renderer.setPixelRatio(ratio);
+        composer.setPixelRatio(ratio);
+        syncViewport();
+        syncGridOpacityScale();
+        applyGridTone();
+      };
 
       // Animation variables
       let targetYaw = 0;
@@ -738,10 +763,12 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
       camera.position.set(0, baseCamY, baseCamRadius);
       camera.lookAt(0, roomCenterY, 0);
 
-      // Adaptive resolution: if the frame rate stays low (older phones), step
-      // the pixel ratio down, never below 1 and never back up, so it cannot
-      // oscillate. Skipped while the tracking models load, which stalls frames.
+      // Auto quality: if the frame rate stays low (older phones), step the
+      // pixel ratio down to the low setting at most, and never back up, so it
+      // cannot oscillate. Skipped while the tracking models load, which stalls
+      // frames. A manual setting keeps its ratio fixed.
       let pixelRatio = renderer.getPixelRatio();
+      const AUTO_MIN_RATIO = qualityPixelRatio('low');
       let fpsFrames = 0;
       let fpsSince = performance.now();
       let slowSeconds = 0;
@@ -753,15 +780,21 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
         fpsFrames = 0;
         fpsSince = now;
         const measuring = !document.hidden && !(startModeRef.current === 'camera' && isLoadingRef.current);
-        slowSeconds = measuring && fps < 45 && pixelRatio > 1 ? slowSeconds + 1 : 0;
+        const adapting = quality.current === 'auto' && pixelRatio > AUTO_MIN_RATIO;
+        slowSeconds = measuring && adapting && fps < 45 ? slowSeconds + 1 : 0;
         if (slowSeconds >= 2) {
           slowSeconds = 0;
-          pixelRatio = Math.max(1, pixelRatio - 0.25);
-          renderer.setPixelRatio(pixelRatio);
-          composer.setPixelRatio(pixelRatio);
-          syncViewport();
+          pixelRatio = Math.max(AUTO_MIN_RATIO, pixelRatio - 0.25);
+          applyPixelRatio(pixelRatio);
         }
       };
+
+      // Settings menu: a manual level fixes the ratio, auto restarts from high.
+      detachQuality = quality.subscribe((level) => {
+        pixelRatio = qualityPixelRatio(level);
+        slowSeconds = 0;
+        applyPixelRatio(pixelRatio);
+      });
 
       // Render loop
       const animate = () => {
@@ -797,11 +830,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
         const toneTarget = inEntry ? 0 : 1;
         if (Math.abs(toneTarget - gridTone) > 0.001) {
           gridTone += (toneTarget - gridTone) * 0.045;
-          for (const plane of gridGroup.children) {
-            const material = (plane as THREE.LineSegments).material as THREE.LineBasicMaterial;
-            material.color.copy(GRID_IDLE).lerp(GRID_ACTIVE, gridTone);
-            material.opacity = THREE.MathUtils.lerp(GRID_IDLE_OPACITY, GRID_ACTIVE_OPACITY, gridTone);
-          }
+          applyGridTone();
         }
 
         const slideX = smoothedOffsetX * 2.4 + smoothedSlideX;
@@ -1091,6 +1120,7 @@ const FaceTrackingRoom: React.FC<FaceTrackingRoomProps> = ({ onPointerFallbackCh
     return () => {
       isMounted = false;
       window.removeEventListener('resize', handleResize);
+      detachQuality();
       detachPointer.forEach((off) => off());
       cancelAnimationFrame(animationId);
 
