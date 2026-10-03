@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { Coffee, X } from 'lucide-react';
 import { COPY, LANGUAGES, detectLang, storeLang, type LangCode } from './aboutTranslations';
 
 interface AboutDialogProps {
@@ -8,6 +8,8 @@ interface AboutDialogProps {
 }
 
 const TECH = ['Three.js', 'MediaPipe', 'WebGL', 'React 19'];
+
+const SUPPORT_URL = 'https://buymeacoffee.com/andreaiannarone';
 
 /**
  * Project info panel.
@@ -167,7 +169,16 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onClose }) => {
               Andrea Iannarone
             </a>
           </p>
-          <p className="mt-2.5 font-mono text-[10px] leading-relaxed tracking-wide text-white uppercase">
+          <a
+            href={SUPPORT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#ffdd00]/30 bg-[#ffdd00]/10 px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-[#ffdd00] uppercase transition-colors hover:bg-[#ffdd00]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            <Coffee className="h-3.5 w-3.5" aria-hidden="true" />
+            {t.support}
+          </a>
+          <p className="mt-3 font-mono text-[10px] leading-relaxed tracking-wide text-white uppercase">
             {t.disclaimer}
           </p>
         </div>

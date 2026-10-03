@@ -7,6 +7,7 @@
 [![Three.js](https://img.shields.io/badge/Three.js-0.186-000000?style=flat-square)](https://threejs.org)
 [![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7-3178c6?style=flat-square)](https://www.typescriptlang.org)
+[![Buy Me a Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-support-ffdd00?style=flat-square&logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/andreaiannarone)
 
 An interactive WebGL experience where face and hand movements control a fully immersive 3D
 environment, rendered in real time with Three.js and Google MediaPipe. A tribute to the
@@ -160,6 +161,14 @@ Every absolute URL points to `https://newelement.andreaia.com`. To deploy elsewh
 grep -rl "newelement.andreaia.com" index.html public/ README.md \
   | xargs sed -i '' 's|newelement.andreaia.com|YOUR-DOMAIN.com|g'
 ```
+
+---
+
+## Support
+
+If you enjoyed New Element, you can support the project with a coffee:
+
+<a href="https://buymeacoffee.com/andreaiannarone"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-ffdd00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" /></a>
 
 ---
 

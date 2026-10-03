@@ -29,6 +29,8 @@ export interface AboutCopy {
   privacyBody: string;
   builtWith: string;
   disclaimer: string;
+  /** Label of the Buy Me a Coffee link. */
+  support: string;
   close: string;
   languageLabel: string;
 }
@@ -50,6 +52,7 @@ export const COPY: Record<LangCode, AboutCopy> = {
       'Everything runs on your device. The webcam stream is processed locally in the browser and is never recorded, uploaded or sent to a server.',
     builtWith: 'Built with',
     disclaimer: 'Independent fan project - not affiliated with Marvel or The Walt Disney Company.',
+    support: 'Buy me a coffee',
     close: 'Close',
     languageLabel: 'Language',
   },
@@ -71,6 +74,7 @@ export const COPY: Record<LangCode, AboutCopy> = {
       'Tutto viene elaborato sul tuo dispositivo. Il flusso della webcam resta nel browser e non viene mai registrato, caricato o inviato a un server.',
     builtWith: 'Realizzato con',
     disclaimer: 'Progetto amatoriale indipendente - non affiliato a Marvel o The Walt Disney Company.',
+    support: 'Offrimi un caffè',
     close: 'Chiudi',
     languageLabel: 'Lingua',
   },
@@ -92,6 +96,7 @@ export const COPY: Record<LangCode, AboutCopy> = {
       'Todo se procesa en tu dispositivo. El vídeo de la cámara permanece en el navegador y nunca se graba, se sube ni se envía a un servidor.',
     builtWith: 'Hecho con',
     disclaimer: 'Proyecto de fans independiente: sin afiliación con Marvel ni The Walt Disney Company.',
+    support: 'Invítame a un café',
     close: 'Cerrar',
     languageLabel: 'Idioma',
   },
@@ -113,6 +118,7 @@ export const COPY: Record<LangCode, AboutCopy> = {
       'Tout est traité sur votre appareil. Le flux de la webcam reste dans le navigateur et n’est jamais enregistré, téléversé ni envoyé à un serveur.',
     builtWith: 'Réalisé avec',
     disclaimer: 'Projet de fan indépendant - sans lien avec Marvel ou The Walt Disney Company.',
+    support: 'Offrez-moi un café',
     close: 'Fermer',
     languageLabel: 'Langue',
   },
@@ -134,6 +140,7 @@ export const COPY: Record<LangCode, AboutCopy> = {
       'Alles läuft auf deinem Gerät. Der Webcam-Stream bleibt im Browser und wird nie aufgezeichnet, hochgeladen oder an einen Server gesendet.',
     builtWith: 'Gebaut mit',
     disclaimer: 'Unabhängiges Fanprojekt - nicht mit Marvel oder The Walt Disney Company verbunden.',
+    support: 'Spendier mir einen Kaffee',
     close: 'Schließen',
     languageLabel: 'Sprache',
   },
