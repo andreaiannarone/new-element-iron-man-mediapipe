@@ -157,27 +157,29 @@ const AboutDialog: React.FC<AboutDialogProps> = ({ open, onClose }) => {
         </div>
 
         <div className="mt-6 border-t border-white/10 pt-4">
-          {/* Signature line: stays in English in every language. */}
-          <p className="text-xs tracking-wider text-white uppercase" lang="en">
-            Creative experience by{' '}
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            {/* Signature line: stays in English in every language. */}
+            <p className="text-xs tracking-wider text-white uppercase" lang="en">
+              Creative experience by{' '}
+              <a
+                href="https://andreaiannarone.com"
+                target="_blank"
+                rel="author noopener noreferrer"
+                className="font-bold text-white transition-colors hover:text-white/70"
+              >
+                Andrea Iannarone
+              </a>
+            </p>
             <a
-              href="https://andreaiannarone.com"
+              href={SUPPORT_URL}
               target="_blank"
-              rel="author noopener noreferrer"
-              className="font-bold text-white transition-colors hover:text-white/70"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[#ffdd00]/30 bg-[#ffdd00]/10 px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-[#ffdd00] uppercase transition-colors hover:bg-[#ffdd00]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
             >
-              Andrea Iannarone
+              <Coffee className="h-3.5 w-3.5" aria-hidden="true" />
+              {t.support}
             </a>
-          </p>
-          <a
-            href={SUPPORT_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-2 rounded-full border border-[#ffdd00]/30 bg-[#ffdd00]/10 px-3 py-1.5 font-mono text-[10px] font-bold tracking-wider text-[#ffdd00] uppercase transition-colors hover:bg-[#ffdd00]/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-          >
-            <Coffee className="h-3.5 w-3.5" aria-hidden="true" />
-            {t.support}
-          </a>
+          </div>
           <p className="mt-3 font-mono text-[10px] leading-relaxed tracking-wide text-white uppercase">
             {t.disclaimer}
           </p>
